@@ -10,40 +10,48 @@ export const useAuthStore = defineStore("auth", () => {
   const requires2FA = ref(false);
   const tempToken = ref(null);
   const isLoading = ref(false);
+  const requiresVerification = ref(false);
 
   const login = async (email, password) => {
     try {
       isLoading.value = true;
-      const response = await axios.post("/auth/login", { email, password });
+      requiresVerification.value = false;
 
-      if (response.data.requires2FA) {
+      const { data } = await axios.post("/auth/login", { email, password });
+
+      if (data.requiresVerification) {
+        requiresVerification.value = true;
+        return { requiresVerification: true };
+      }
+
+      if (data.requires2FA) {
         requires2FA.value = true;
-        tempToken.value = response.data.tempToken;
+        tempToken.value = data.tempToken;
         localStorage.setItem("requires2FA", "true");
         localStorage.setItem("tempToken", tempToken.value);
         router.push("/otp");
-        return;
+        return { requires2FA: true };
       }
 
-      // Normal login without 2FA
-      token.value = response.data.accessToken;
-      refreshToken.value = response.data.refreshToken;
+      token.value = data.accessToken;
+      refreshToken.value = data.refreshToken;
       localStorage.setItem("authToken", token.value);
       localStorage.setItem("refreshToken", refreshToken.value);
+
       user.value = {
-        id: response.data.userdata.id,
-        email: response.data.userdata.email,
-        role: response.data.userdata.role,
-        twoFAEnabled: response.data.userdata.twoFAEnabled,
-        first_name: response.data.userdata.first_name,
-        last_name: response.data.userdata.last_name,
+        id: data.userdata.id,
+        email: data.userdata.email,
+        role: data.userdata.role,
+        twoFAEnabled: data.userdata.twoFAEnabled,
+        first_name: data.userdata.first_name,
+        last_name: data.userdata.last_name,
       };
       localStorage.setItem("userData", JSON.stringify(user.value));
+
       router.push("/dashboard");
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || "Login failed";
-      console.error("Login Error:", errorMessage);
-      throw new Error(errorMessage);
+      return { ok: true };
+    } catch (e) {
+      throw new Error(e.response?.data?.message || "Login failed");
     } finally {
       isLoading.value = false;
     }
@@ -70,7 +78,6 @@ export const useAuthStore = defineStore("auth", () => {
         first_name: response.data.userdata.first_name,
         last_name: response.data.userdata.last_name,
       };
-
       localStorage.setItem("userData", JSON.stringify(user.value));
 
       requires2FA.value = false;
@@ -110,26 +117,56 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
+  const resendVerification = async (email) => {
+    try {
+      isLoading.value = true;
+      await axios.post("/auth/resend-verification", { email });
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message || "Failed to resend verification"
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const logout = () => {
     token.value = null;
     refreshToken.value = null;
     user.value = null;
     requires2FA.value = false;
     tempToken.value = null;
+    requiresVerification.value = false;
 
     localStorage.removeItem("authToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userData");
-    localStorage.setItem("logout", Date.now()); // Notify other tabs
+    localStorage.removeItem("requires2FA");
+    localStorage.removeItem("tempToken");
+
+    localStorage.setItem("logout", Date.now());
 
     router.push({ name: "login" });
+  };
+
+  const verifyEmail = async (token) => {
+    try {
+      isLoading.value = true;
+      await axios.get("/auth/verify-email", { params: { token } });
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message || "Email verification failed"
+      );
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   const verifyToken = async () => {
     try {
       isLoading.value = true;
-      await axios.get("/auth/verify"); // Ensure the token is valid
-    } catch (error) {
+      await axios.get("/auth/verify");
+    } catch {
       throw new Error("Invalid token");
     } finally {
       isLoading.value = false;
@@ -142,21 +179,17 @@ export const useAuthStore = defineStore("auth", () => {
       const response = await axios.post("/auth/refresh", {
         refreshToken: refreshToken.value,
       });
-
       token.value = response.data.accessToken;
       localStorage.setItem("authToken", token.value);
-    } catch (error) {
+    } catch {
       throw new Error("Refresh token expired");
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Listen for logout event across tabs
   window.addEventListener("storage", (event) => {
-    if (event.key === "logout") {
-      logout();
-    }
+    if (event.key === "logout") logout();
   });
 
   return {
@@ -166,6 +199,7 @@ export const useAuthStore = defineStore("auth", () => {
     requires2FA,
     tempToken,
     isLoading,
+    requiresVerification,
     login,
     logout,
     verify2FA,
@@ -173,6 +207,8 @@ export const useAuthStore = defineStore("auth", () => {
     disable2FA,
     verifyToken,
     refreshAccessToken,
+    verifyEmail,
+    resendVerification,
     isAuthenticated: () => !!token.value,
   };
 });

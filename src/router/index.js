@@ -17,6 +17,30 @@ const routes = [
     name: "login",
     component: () => import("@/auth/SignInPage.vue"),
   },
+  {
+    meta: { title: "Register" },
+    path: "/register",
+    name: "register",
+    component: () => import("@/auth/RegisterPage.vue"),
+  },
+  {
+    meta: { title: "Verify" },
+    path: "/verify-email",
+    name: "verify-email",
+    component: () => import("@/auth/VerifyPage.vue"),
+  },
+  {
+    meta: { title: "Verify Prompt" },
+    path: "/verify-prompt",
+    name: "verify-prompt",
+    component: () => import("@/auth/VerifyPrompt.vue"),
+  },
+  {
+    meta: { title: "Verifying…" },
+    path: "/verifying-now",
+    name: "verifying-now",
+    component: () => import("@/auth/VerifyingNow.vue"),
+  },
 
   // ==========================
   // Dashboard

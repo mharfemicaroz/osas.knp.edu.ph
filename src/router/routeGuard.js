@@ -1,31 +1,24 @@
+// src/router/routeGuard.js
 import { useAuthStore } from "@/stores/auth";
 
-export const authGuard = async (to, from, next) => {
+export const authGuard = (to, from, next) => {
   const authStore = useAuthStore();
+  const publicPages = [
+    "login",
+    "register",
+    "verify-email",
+    "verify-prompt",
+    "verifying-now",
+  ];
 
-  //  Restore 2FA state from localStorage
-  authStore.requires2FA = localStorage.getItem("requires2FA") === "true";
-
-  //  If user has not completed 2FA, redirect to OTP page
-  if (authStore.requires2FA && to.name !== "otp") {
-    console.log(" Redirecting user to OTP page"); // Debugging
-    return next({ name: "otp" });
-  }
-
-  //  If user is not logged in and no 2FA pending, redirect to login
-  if (!authStore.token && !authStore.requires2FA) {
-    if (to.name !== "login") {
-      authStore.logout();
+  if (!authStore.token) {
+    if (!publicPages.includes(to.name)) {
       return next({ name: "login" });
     }
     return next();
   }
 
-  //  Prevent logged-in users from accessing login or OTP page again
-  if (
-    (to.name === "login" || to.name === "otp") &&
-    authStore.isAuthenticated()
-  ) {
+  if (publicPages.includes(to.name) && authStore.isAuthenticated()) {
     return next({ name: "dashboard" });
   }
 

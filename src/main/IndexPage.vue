@@ -137,7 +137,7 @@ export default {
         const authStore = useAuthStore();
         this.title = document.title;
         this.user = authStore.user[0];
-        this.fullname = authStore.user.firstname + " " + authStore.user.surname;
+        this.fullname = authStore.user.first_name + " " + authStore.user.last_name;
         window.toastRef = this.$refs.toast;
     },
 };

@@ -9,7 +9,7 @@
             </div>
         </div>
 
-        <div v-if="loading" class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
+        <div v-if="auth.isLoading" class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
             <div class="loader"></div>
         </div>
 
@@ -33,27 +33,27 @@
                                 <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-primary/10">
                                     <i class="mdi mdi-account-key text-primary text-xl"></i>
                                 </span>
-                                <h2 class="text-lg font-bold text-gray-900">{{ forgotPassword ? "Reset Password" :
-                                    "SignIn" }}</h2>
+                                <h2 class="text-lg font-bold text-gray-900">Sign In</h2>
                             </div>
-                            <p class="text-xs text-gray-500 mt-2" v-if="!forgotPassword">Use your Student Number and
-                                password</p>
-                            <p class="text-xs text-gray-500 mt-2" v-else>Verify your birthdate to reset</p>
+                            <p class="text-xs text-gray-500 mt-2">Use your email and password</p>
                         </div>
 
-                        <form @submit.prevent="forgotPassword ? resetPassword() : login()" class="space-y-4" novalidate>
+                        <form @submit.prevent="onSubmit" class="space-y-4" novalidate>
+                            <input type="text" v-model="honeypot" class="hidden" tabindex="-1" autocomplete="off"
+                                aria-hidden="true" />
+
                             <div class="relative">
-                                <label class="sr-only">Student Number</label>
+                                <label class="sr-only">Email</label>
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <i class="mdi mdi-card-account-details-outline text-gray-400 text-xl"></i>
+                                    <i class="mdi mdi-email-outline text-gray-400 text-xl"></i>
                                 </div>
                                 <input
                                     class="w-full rounded-xl border border-gray-300/80 bg-white/70 pl-11 pr-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition disabled:opacity-60"
-                                    type="text" inputmode="numeric" required :readonly="isAuthenticated"
-                                    placeholder="Student Number" v-model.trim="username" autocomplete="off" />
+                                    type="email" required placeholder="Email" v-model.trim="email"
+                                    autocomplete="email" />
                             </div>
 
-                            <div v-if="!forgotPassword" class="space-y-2">
+                            <div class="space-y-2">
                                 <div class="relative">
                                     <label class="sr-only">Password</label>
                                     <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -61,8 +61,8 @@
                                     </div>
                                     <input :type="showPassword ? 'text' : 'password'"
                                         class="w-full rounded-xl border border-gray-300/80 bg-white/70 pl-11 pr-11 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition disabled:opacity-60"
-                                        required :readonly="isAuthenticated" placeholder="Password" v-model="password"
-                                        @keyup="detectCaps($event)" autocomplete="off" />
+                                        required placeholder="Password" v-model="password" @keyup="detectCaps($event)"
+                                        autocomplete="current-password" />
                                     <button type="button" @click="showPassword = !showPassword"
                                         class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
                                         <i
@@ -75,42 +75,57 @@
                                 </div>
                             </div>
 
-                            <div v-if="forgotPassword" class="space-y-2">
-                                <label for="birthdate" class="block text-xs font-medium text-gray-700">Birthdate</label>
-                                <input id="birthdate"
-                                    class="w-full rounded-xl border border-gray-300/80 bg-white/70 px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition"
-                                    type="date" required v-model="birthdate" />
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-sm font-medium text-gray-700">Captcha</label>
+                                    <button type="button" @click="genCaptcha"
+                                        class="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                                        <i class="mdi mdi-refresh"></i>
+                                        Refresh
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <div
+                                            class="w-full rounded-xl border border-gray-300/80 bg-white/70 px-3 py-2.5 text-gray-900 flex items-center justify-between">
+                                            <span class="text-sm select-none">{{ captchaA }} + {{ captchaB }} =</span>
+                                            <input class="ml-3 w-24 text-right bg-transparent focus:outline-none"
+                                                inputmode="numeric" pattern="[0-9]*" placeholder="Answer"
+                                                v-model.trim="captchaInput" />
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+                                        :class="captchaStateClass">
+                                        <i :class="captchaIconClass"></i>
+                                    </span>
+                                </div>
+                                <p v-if="captchaError" class="text-xs text-red-600">{{ captchaError }}</p>
                             </div>
 
-                            <div v-if="!forgotPassword" class="flex items-center justify-between">
-                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                    <input type="checkbox"
-                                        class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/40"
-                                        v-model="rememberMe" />
-                                    Remember me
-                                </label>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-700">&nbsp;</span>
                                 <button type="button" class="text-sm text-primary hover:underline"
-                                    @click="toggleForgotPassword">Forgot password?</button>
+                                    @click="forgotPassword">
+                                    Forgot password?
+                                </button>
                             </div>
 
                             <div class="pt-1">
                                 <button
                                     class="w-full py-2.5 px-4 rounded-xl bg-primary text-white font-semibold tracking-wide shadow-md hover:shadow-lg hover:bg-tertiary transition disabled:opacity-60 disabled:cursor-not-allowed"
-                                    type="submit" :disabled="isAuthenticated || !canSubmit">
+                                    type="submit" :disabled="!canSubmit || auth.isLoading">
                                     <span class="inline-flex items-center justify-center gap-2">
-                                        <i class="mdi"
-                                            :class="forgotPassword ? 'mdi-key-change' : 'mdi-login-variant'"></i>
-                                        <span>{{ forgotPassword ? "Reset Password" : "Log In" }}</span>
+                                        <i class="mdi mdi-login-variant"></i>
+                                        <span>Log In</span>
                                     </span>
                                 </button>
                             </div>
 
-                            <div class="text-center">
-                                <button type="button" class="text-sm text-primary-text hover:underline"
-                                    @click="toggleForgotPassword">
-                                    <i class="mdi mdi-lock mr-1"></i>
-                                    {{ forgotPassword ? "Back to Sign In" : "Reset Password" }}
-                                </button>
+
+                            <div class="text-center text-xs mt-3">
+                                <router-link to="/register" class="text-primary hover:underline">
+                                    Don't have an account? <span class="font-semibold">Register</span>
+                                </router-link>
                             </div>
                         </form>
                     </div>
@@ -140,80 +155,80 @@ import { useAuthStore } from "@/stores/auth";
 export default {
     data() {
         return {
-            username: "",
+            email: "",
             password: "",
-            birthdate: "",
-            isAuthenticated: false,
-            loading: false,
-            forgotPassword: false,
             showPassword: false,
             capsOn: false,
-            rememberMe: false,
+            captchaA: 0,
+            captchaB: 0,
+            captchaInput: "",
+            captchaError: "",
+            honeypot: ""
         };
     },
     computed: {
+        auth() {
+            return useAuthStore();
+        },
+        captchaAnswer() {
+            return this.captchaA + this.captchaB;
+        },
+        captchaValid() {
+            return String(parseInt(this.captchaInput || "NaN", 10)) === String(this.captchaAnswer);
+        },
+        captchaStateClass() {
+            if (!this.captchaInput) return "bg-gray-100 text-gray-400 border border-gray-200";
+            return this.captchaValid ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200";
+        },
+        captchaIconClass() {
+            if (!this.captchaInput) return "mdi mdi-help-circle-outline text-xl";
+            return this.captchaValid ? "mdi mdi-check-bold text-xl" : "mdi mdi-close-thick text-xl";
+        },
         canSubmit() {
-            if (this.forgotPassword) {
-                return this.username.trim().length > 0 && this.birthdate !== "";
-            }
-            return this.username.trim().length > 0 && this.password.length > 0;
+            return this.email.trim().length > 0 && this.password.length > 0 && this.captchaValid && !this.honeypot;
         },
     },
     methods: {
-        async login() {
-            const authStore = useAuthStore();
-            let authAccess = null;
+        async onSubmit() {
+            if (this.honeypot) return;
+            if (!this.captchaValid) {
+                this.captchaError = "Incorrect captcha answer.";
+                return;
+            }
+            this.captchaError = "";
             try {
-                this.loading = true;
-                authAccess = await authStore.login(this.username, { password: this.password, remember: this.rememberMe });
-            } catch (error) {
-                console.error("Error:", error);
-            } finally {
-                this.loading = false;
-                if (authAccess) {
-                    this.isAuthenticated = true;
-                    this.$refs.toast.showToast("success", "Login successfully!");
-                    setTimeout(() => {
-                        this.$router.push("/index/dashboard");
-                    }, 800);
-                } else {
-                    this.$refs.toast.showToast("warning", "Invalid login credentials!");
+                const res = await this.auth.login(this.email, this.password);
+                if (res?.requiresVerification || this.auth.requiresVerification) {
+                    this.$refs.toast.showToast("info", "Please verify your email before logging in.");
+                    this.$router.push({ name: "verify-prompt", query: { email: this.email } });
+                    return;
                 }
+                if (res?.requires2FA) return;
+                this.$refs.toast.showToast("success", "Login successful!");
+            } catch (error) {
+                this.$refs.toast.showToast("warning", error.message || "Invalid login credentials!");
+                this.genCaptcha();
+                this.captchaInput = "";
             }
         },
-        toggleForgotPassword() {
-            this.forgotPassword = !this.forgotPassword;
-            this.username = "";
-            this.password = "";
-            this.birthdate = "";
-            this.showPassword = false;
-            this.capsOn = false;
-        },
-        async resetPassword() {
-            const authStore = useAuthStore();
-            const [year, month, day] = this.birthdate.split("-");
-            const formattedBirthdate = `${month}/${day}/${year}`;
-            try {
-                this.loading = true;
-                await authStore.reset({ studentno: this.username, birthday: formattedBirthdate }, { password: "123456" });
-                this.$refs.toast.showToast("info", "If all fields are valid, the password is reset to default.");
-                this.isAuthenticated = true;
-            } catch (e) {
-                console.error(e);
-                this.$refs.toast.showToast("warning", "Reset failed. Check your details.");
-            } finally {
-                this.loading = false;
-                setTimeout(() => {
-                    this.forgotPassword = false;
-                    this.isAuthenticated = false;
-                }, 900);
-            }
+        forgotPassword() {
+            this.$refs.toast.showToast("info", "Please contact support to reset your password.");
         },
         detectCaps(e) {
             if (e.getModifierState) this.capsOn = e.getModifierState("CapsLock");
         },
+        genCaptcha() {
+            const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            this.captchaA = r(10, 49);
+            this.captchaB = r(10, 49);
+            this.captchaInput = "";
+            this.captchaError = "";
+        },
     },
     components: { ToasterComponent },
+    created() {
+        this.genCaptcha();
+    }
 };
 </script>
 
