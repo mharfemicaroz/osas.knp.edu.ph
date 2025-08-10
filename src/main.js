@@ -15,7 +15,7 @@ app.use(createPinia());
 
 app.mount("#app");
 
-// Register the Service Worker
+// Register the Service Workers
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
