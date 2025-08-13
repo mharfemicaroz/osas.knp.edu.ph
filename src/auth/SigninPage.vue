@@ -121,6 +121,26 @@
                                 </button>
                             </div>
 
+                            <div class="relative my-4">
+                                <div class="absolute inset-0 flex items-center">
+                                    <span class="w-full border-t border-gray-200"></span>
+                                </div>
+                                <div class="relative flex justify-center text-xs">
+                                    <span class="bg-white/80 px-2 text-gray-500">or continue with</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <button type="button"
+                                    class="w-full py-2.5 px-4 rounded-xl bg-white text-gray-800 font-semibold tracking-wide border border-gray-300/80 shadow-sm hover:shadow-md hover:bg-gray-50 transition disabled:opacity-60"
+                                    :disabled="auth.isLoading" @click="signInWithSchoolAccount">
+                                    <span class="inline-flex items-center justify-center gap-2">
+                                        <i class="mdi mdi-google"></i>
+                                        <span>Sign in with School Account</span>
+                                        <span class="text-xs text-gray-500">(knp.edu.ph)</span>
+                                    </span>
+                                </button>
+                            </div>
 
                             <div class="text-center text-xs mt-3">
                                 <router-link to="/register" class="text-primary hover:underline">
@@ -163,7 +183,8 @@ export default {
             captchaB: 0,
             captchaInput: "",
             captchaError: "",
-            honeypot: ""
+            honeypot: "",
+            _ssoHandled: false,
         };
     },
     computed: {
@@ -224,10 +245,39 @@ export default {
             this.captchaInput = "";
             this.captchaError = "";
         },
+        signInWithSchoolAccount() {
+            try {
+                this.auth.startGoogleLogin();
+            } catch (e) {
+                this.$refs.toast.showToast("warning", e.message || "Unable to start Google sign-in");
+            }
+        },
+        tryConsumeSso({ suppressToast = false } = {}) {
+            // if we've already handled (success or error), skip
+            if (this._ssoHandled) return;
+
+            try {
+                const consumed = this.auth.consumeSsoFromHash();
+                if (consumed) {
+                    this._ssoHandled = true;
+                    if (!suppressToast) this.$refs.toast?.showToast("success", "Signed in with school account");
+                }
+            } catch (e) {
+                this._ssoHandled = true;
+                if (!suppressToast) this.$refs.toast?.showToast("warning", e.message || "Google sign-in failed");
+            }
+        },
     },
     components: { ToasterComponent },
     created() {
         this.genCaptcha();
+    },
+    mounted() {
+        // Consume SSO AFTER the component is mounted to ensure we read the final URL.
+        this.tryConsumeSso();
+
+        // Also attempt again on next tick in case router normalizes the URL after mount.
+        this.$nextTick(() => this.tryConsumeSso({ suppressToast: true }));
     }
 };
 </script>

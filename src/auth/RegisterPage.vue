@@ -9,7 +9,7 @@
             </div>
         </div>
 
-        <div v-if="isLoading" class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
+        <div v-if="auth.isLoading" class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
             <div class="loader"></div>
         </div>
 
@@ -19,8 +19,9 @@
                     <a href="index.html" class="inline-flex items-center justify-center">
                         <img src="/images/logo.png" alt="OSAS" class="h-14 w-auto" />
                     </a>
-                    <h1 class="mt-4 text-2xl font-extrabold tracking-wide text-white">Office of Student Affairs &
-                        Services</h1>
+                    <h1 class="mt-4 text-2xl font-extrabold tracking-wide text-white">
+                        Office of Student Affairs & Services
+                    </h1>
                     <p class="mt-1 text-primary-text/90 text-sm">Serve. Support. Empower.</p>
                 </div>
 
@@ -188,7 +189,7 @@
                             <div class="pt-1">
                                 <button
                                     class="w-full py-2.5 px-4 rounded-xl bg-primary text-white font-semibold tracking-wide shadow-md hover:shadow-lg hover:bg-tertiary transition disabled:opacity-60 disabled:cursor-not-allowed"
-                                    type="submit" :disabled="!canSubmit || isLoading">
+                                    type="submit" :disabled="!canSubmit || auth.isLoading">
                                     <span class="inline-flex items-center justify-center gap-2">
                                         <i class="mdi mdi-account-check-outline"></i>
                                         <span>Create Account</span>
@@ -196,9 +197,31 @@
                                 </button>
                             </div>
 
+                            <div class="relative my-4">
+                                <div class="absolute inset-0 flex items-center">
+                                    <span class="w-full border-t border-gray-200"></span>
+                                </div>
+                                <div class="relative flex justify-center text-xs">
+                                    <span class="bg-white/80 px-2 text-gray-500">or sign up with</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <button type="button"
+                                    class="w-full py-2.5 px-4 rounded-xl bg-white text-gray-800 font-semibold tracking-wide border border-gray-300/80 shadow-sm hover:shadow-md hover:bg-gray-50 transition disabled:opacity-60"
+                                    :disabled="auth.isLoading" @click="signUpWithSchoolAccount">
+                                    <span class="inline-flex items-center justify-center gap-2">
+                                        <i class="mdi mdi-google"></i>
+                                        <span>Sign up with School Account</span>
+                                        <span class="text-xs text-gray-500">(knp.edu.ph)</span>
+                                    </span>
+                                </button>
+                            </div>
+
                             <div class="text-center text-xs">
-                                <router-link to="/login" class="text-primary hover:underline">Already have an account?
-                                    Sign in</router-link>
+                                <router-link to="/login" class="text-primary hover:underline">
+                                    Already have an account? Sign in
+                                </router-link>
                             </div>
                         </form>
                     </div>
@@ -223,7 +246,7 @@
 
 <script>
 import ToasterComponent from "../components/ToasterComponent.vue";
-import axiosInstance from "@/plugins/axiosConfig";
+import { useAuthStore } from "@/stores/auth";
 
 export default {
     data() {
@@ -240,7 +263,6 @@ export default {
             showConfirm: false,
             capsOnPwd: false,
             capsOnConfirm: false,
-            isLoading: false,
             triedSubmit: false,
             honeypot: "",
             captchaA: 0,
@@ -250,6 +272,9 @@ export default {
         };
     },
     computed: {
+        auth() {
+            return useAuthStore();
+        },
         usernameValid() {
             return /^[a-zA-Z0-9._-]{4,20}$/.test(this.username);
         },
@@ -292,13 +317,13 @@ export default {
     methods: {
         async onSubmit() {
             this.triedSubmit = true;
+            if (this.honeypot) return;
             if (!this.canSubmit) {
                 if (!this.captchaValid) this.captchaError = "Incorrect captcha answer.";
                 return;
             }
             this.captchaError = "";
             try {
-                this.isLoading = true;
                 const payload = {
                     username: this.username.trim(),
                     email: this.email.trim(),
@@ -308,7 +333,10 @@ export default {
                     first_name: this.first_name.trim(),
                     last_name: this.last_name.trim(),
                 };
-                await axiosInstance.post(`/auth/register`, payload);
+
+                // store handles email existence check if endpoint is available
+                await this.auth.register(payload);
+
                 this.$refs.toast.showToast("success", "Registration successful! Please sign in.");
                 this.username = "";
                 this.email = "";
@@ -318,15 +346,14 @@ export default {
                 this.confirmPassword = "";
                 this.captchaInput = "";
                 this.triedSubmit = false;
+
                 setTimeout(() => {
                     this.$router.push({ name: "login" });
                 }, 500);
             } catch (error) {
-                const msg = error?.response?.data?.message || error?.message || "Registration failed";
+                const msg = error?.message || "Registration failed";
                 this.$refs.toast.showToast("warning", msg);
                 this.genCaptcha();
-            } finally {
-                this.isLoading = false;
             }
         },
         detectCaps(e) {
@@ -338,11 +365,31 @@ export default {
             this.captchaB = r(10, 49);
             this.captchaInput = "";
             this.captchaError = "";
+        },
+        signUpWithSchoolAccount() {
+            try {
+                this.auth.startGoogleLogin("#/register");
+            } catch (e) {
+                this.$refs.toast.showToast("warning", e.message || "Unable to start Google sign-up");
+            }
+        },
+        tryConsumeSso() {
+            try {
+                const consumed = this.auth.consumeSsoFromHash();
+                if (consumed) this.$refs.toast?.showToast("success", "Signed up with school account");
+            } catch (e) {
+                this.$refs.toast?.showToast("warning", e.message || "Google sign-up failed");
+            }
         }
     },
     components: { ToasterComponent },
     created() {
         this.genCaptcha();
+    },
+    mounted() {
+        // In case SSO redirects back to /register
+        this.tryConsumeSso();
+        this.$nextTick(() => this.tryConsumeSso());
     }
 };
 </script>
