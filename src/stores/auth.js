@@ -46,12 +46,13 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, captchaToken) => {
     try {
       isLoading.value = true;
       requiresVerification.value = false;
 
-      const { data } = await axios.post("/auth/login", { email, password });
+      // pass the token through to the service
+      const data = await apiAuth.login(email, password, { captchaToken });
 
       if (data.requiresVerification) {
         requiresVerification.value = true;
@@ -286,6 +287,7 @@ export const useAuthStore = defineStore("auth", () => {
     resendVerification,
     startGoogleLogin,
     consumeSsoFromHash,
+    getCaptchaToken: apiAuth.getCaptchaToken,
     isAuthenticated: () => !!token.value,
   };
 });

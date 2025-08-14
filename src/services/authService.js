@@ -3,9 +3,42 @@ import axiosInstance from "../plugins/axiosConfig";
 
 const API_URL = "/auth";
 
+const SITE_KEY = import.meta.env?.VITE_RECAPTCHA_SITE_KEY || "";
+const RECAPTCHA_ENABLED =
+  String(import.meta.env?.VITE_RECAPTCHA_ENABLED ?? "true").toLowerCase() ===
+  "true";
+
+/**
+ * Get a reCAPTCHA Enterprise token for the given action.
+ * Returns null if disabled or grecaptcha not available.
+ */
+async function getCaptchaToken(action) {
+  if (!RECAPTCHA_ENABLED) return null;
+  if (typeof window === "undefined") return null;
+
+  const g = window.grecaptcha?.enterprise || window.grecaptcha;
+  if (!g?.ready || !g?.execute || !SITE_KEY) return null;
+
+  // grecaptcha.ready requires a callback — don't call it with no args
+  await new Promise((resolve) => g.ready(resolve));
+
+  try {
+    return await g.execute(SITE_KEY, { action });
+  } catch {
+    return null;
+  }
+}
+
 export default {
-  async register(data) {
-    const response = await axiosInstance.post(`${API_URL}/register`, data);
+  // expose so callers can fetch explicitly if needed
+  getCaptchaToken,
+
+  async register(data, { action = "register", captchaToken } = {}) {
+    const token = captchaToken ?? (await getCaptchaToken(action));
+    const response = await axiosInstance.post(`${API_URL}/register`, {
+      ...data,
+      captchaToken: token,
+    });
     return response.data;
   },
 
@@ -13,13 +46,15 @@ export default {
     const response = await axiosInstance.get(`${API_URL}/check-email`, {
       params: { email },
     });
-    return response.data; // expected shape: { exists: boolean }
+    return response.data; // { exists: boolean }
   },
 
-  async login(email, password) {
+  async login(email, password, { action = "login", captchaToken } = {}) {
+    const token = captchaToken ?? (await getCaptchaToken(action));
     const response = await axiosInstance.post(`${API_URL}/login`, {
       email,
       password,
+      captchaToken: token,
     });
     return response.data;
   },
@@ -95,21 +130,16 @@ export default {
   },
 
   parseSsoHash(hashString = window.location.hash) {
-    // Work with the full href to handle "#/login#accessToken=..." correctly
     const href = typeof window !== "undefined" ? window.location.href : "";
     let fragment = "";
 
     if (href.includes("#")) {
-      // Take everything after the LAST '#'
       fragment = href.substring(href.lastIndexOf("#") + 1);
     } else {
-      // Fallback to the provided hash string
       const raw = hashString.startsWith("#") ? hashString.slice(1) : hashString;
-      // If it still contains an inner '#', take the tail
       fragment = raw.includes("#") ? raw.split("#").pop() : raw;
     }
 
-    // If nothing meaningful, bail early
     if (
       !fragment ||
       (!fragment.includes("accessToken=") && !fragment.includes("sso="))

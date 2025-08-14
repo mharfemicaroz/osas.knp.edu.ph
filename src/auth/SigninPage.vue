@@ -39,6 +39,7 @@
                         </div>
 
                         <form @submit.prevent="onSubmit" class="space-y-4" novalidate>
+                            <!-- hidden honeypot -->
                             <input type="text" v-model="honeypot" class="hidden" tabindex="-1" autocomplete="off"
                                 aria-hidden="true" />
 
@@ -75,31 +76,16 @@
                                 </div>
                             </div>
 
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-sm font-medium text-gray-700">Captcha</label>
-                                    <button type="button" @click="genCaptcha"
-                                        class="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                                        <i class="mdi mdi-refresh"></i>
-                                        Refresh
-                                    </button>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <div class="flex-1">
-                                        <div
-                                            class="w-full rounded-xl border border-gray-300/80 bg-white/70 px-3 py-2.5 text-gray-900 flex items-center justify-between">
-                                            <span class="text-sm select-none">{{ captchaA }} + {{ captchaB }} =</span>
-                                            <input class="ml-3 w-24 text-right bg-transparent focus:outline-none"
-                                                inputmode="numeric" pattern="[0-9]*" placeholder="Answer"
-                                                v-model.trim="captchaInput" />
-                                        </div>
-                                    </div>
-                                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg"
-                                        :class="captchaStateClass">
-                                        <i :class="captchaIconClass"></i>
-                                    </span>
-                                </div>
-                                <p v-if="captchaError" class="text-xs text-red-600">{{ captchaError }}</p>
+                            <!-- reCAPTCHA info (no visible widget; token is generated under the hood) -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] text-gray-500 inline-flex items-center gap-1">
+                                    <i class="mdi mdi-shield-check-outline"></i>
+                                    Protected by reCAPTCHA Enterprise
+                                </span>
+                                <span class="text-[11px]" :class="recaptchaStatusClass">
+                                    <i :class="recaptchaIconClass"></i>
+                                    <span class="ml-1">{{ recaptchaStatusText }}</span>
+                                </span>
                             </div>
 
                             <div class="flex items-center justify-between">
@@ -179,57 +165,54 @@ export default {
             password: "",
             showPassword: false,
             capsOn: false,
-            captchaA: 0,
-            captchaB: 0,
-            captchaInput: "",
-            captchaError: "",
             honeypot: "",
             _ssoHandled: false,
+
+            // reCAPTCHA status UI (optional)
+            recaptchaReady: false,
+            recaptchaError: "",
         };
     },
     computed: {
         auth() {
             return useAuthStore();
         },
-        captchaAnswer() {
-            return this.captchaA + this.captchaB;
-        },
-        captchaValid() {
-            return String(parseInt(this.captchaInput || "NaN", 10)) === String(this.captchaAnswer);
-        },
-        captchaStateClass() {
-            if (!this.captchaInput) return "bg-gray-100 text-gray-400 border border-gray-200";
-            return this.captchaValid ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200";
-        },
-        captchaIconClass() {
-            if (!this.captchaInput) return "mdi mdi-help-circle-outline text-xl";
-            return this.captchaValid ? "mdi mdi-check-bold text-xl" : "mdi mdi-close-thick text-xl";
-        },
         canSubmit() {
-            return this.email.trim().length > 0 && this.password.length > 0 && this.captchaValid && !this.honeypot;
+            return this.email.trim().length > 0 && this.password.length > 0 && !this.honeypot;
+        },
+        recaptchaStatusClass() {
+            if (this.recaptchaError) return "text-red-600";
+            return this.recaptchaReady ? "text-green-700" : "text-gray-500";
+        },
+        recaptchaIconClass() {
+            if (this.recaptchaError) return "mdi mdi-close-circle-outline";
+            return this.recaptchaReady ? "mdi mdi-check-circle-outline" : "mdi mdi-dots-horizontal-circle-outline";
+        },
+        recaptchaStatusText() {
+            if (this.recaptchaError) return "unavailable";
+            return this.recaptchaReady ? "ready" : "initializing…";
         },
     },
     methods: {
         async onSubmit() {
             if (this.honeypot) return;
-            if (!this.captchaValid) {
-                this.captchaError = "Incorrect captcha answer.";
-                return;
-            }
-            this.captchaError = "";
+
             try {
-                const res = await this.auth.login(this.email, this.password);
+                // get a token for the `login` action from reCAPTCHA Enterprise
+                const captchaToken = await this.auth.getCaptchaToken("login");
+                const res = await this.auth.login(this.email, this.password, captchaToken);
+
                 if (res?.requiresVerification || this.auth.requiresVerification) {
                     this.$refs.toast.showToast("info", "Please verify your email before logging in.");
                     this.$router.push({ name: "verify-prompt", query: { email: this.email } });
                     return;
                 }
                 if (res?.requires2FA) return;
+
                 this.$refs.toast.showToast("success", "Login successful!");
             } catch (error) {
+                // backend will return 403 with "Captcha verification failed" if token missing/low score
                 this.$refs.toast.showToast("warning", error.message || "Invalid login credentials!");
-                this.genCaptcha();
-                this.captchaInput = "";
             }
         },
         forgotPassword() {
@@ -237,13 +220,6 @@ export default {
         },
         detectCaps(e) {
             if (e.getModifierState) this.capsOn = e.getModifierState("CapsLock");
-        },
-        genCaptcha() {
-            const r = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-            this.captchaA = r(10, 49);
-            this.captchaB = r(10, 49);
-            this.captchaInput = "";
-            this.captchaError = "";
         },
         signInWithSchoolAccount() {
             try {
@@ -253,9 +229,7 @@ export default {
             }
         },
         tryConsumeSso({ suppressToast = false } = {}) {
-            // if we've already handled (success or error), skip
             if (this._ssoHandled) return;
-
             try {
                 const consumed = this.auth.consumeSsoFromHash();
                 if (consumed) {
@@ -267,18 +241,31 @@ export default {
                 if (!suppressToast) this.$refs.toast?.showToast("warning", e.message || "Google sign-in failed");
             }
         },
+        checkRecaptchaReady() {
+            try {
+                const g = window.grecaptcha?.enterprise || window.grecaptcha;
+                if (g?.ready) {
+                    g.ready(() => {
+                        this.recaptchaReady = true;
+                    });
+                } else {
+                    // try again shortly if script loads late
+                    setTimeout(this.checkRecaptchaReady, 600);
+                }
+            } catch (e) {
+                this.recaptchaError = "not loaded";
+            }
+        },
     },
     components: { ToasterComponent },
-    created() {
-        this.genCaptcha();
-    },
     mounted() {
-        // Consume SSO AFTER the component is mounted to ensure we read the final URL.
+        // SSO consume
         this.tryConsumeSso();
-
-        // Also attempt again on next tick in case router normalizes the URL after mount.
         this.$nextTick(() => this.tryConsumeSso({ suppressToast: true }));
-    }
+
+        // reCAPTCHA status (visual only; token is fetched in apiAuth.login)
+        this.checkRecaptchaReady();
+    },
 };
 </script>
 
