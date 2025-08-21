@@ -1,1 +1,0 @@
-import{_ as o}from"./LayoutAuthenticated.Dkj7efH5.js";import{z as t,l as r,m as a,q as _,f as n}from"./index.FwueQgQX.js";import"./ToasterComponent.CMCizEHp.js";import"./_plugin-vue_export-helper.DlAUqK2U.js";const f={__name:"IndexPage",setup(s){return(c,m)=>{const e=a("router-view");return _(),t(o,null,{default:r(()=>[n(e)]),_:1})}}};export{f as default};
