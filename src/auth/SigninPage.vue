@@ -1,5 +1,6 @@
 <template>
     <div class="min-h-screen relative overflow-hidden">
+        <!-- Background layers -->
         <div class="absolute inset-0">
             <div class="h-full w-full bg-cover bg-center" :style="`background-image:url(/images/bg.jpg)`"></div>
             <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
@@ -9,10 +10,12 @@
             </div>
         </div>
 
+        <!-- Loading -->
         <div v-if="auth.isLoading" class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
             <div class="loader"></div>
         </div>
 
+        <!-- Login form -->
         <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
             <div class="w-full max-w-md">
                 <div class="mb-6 text-center">
@@ -39,10 +42,11 @@
                         </div>
 
                         <form @submit.prevent="onSubmit" class="space-y-4" novalidate>
-                            <!-- hidden honeypot -->
+                            <!-- honeypot -->
                             <input type="text" v-model="honeypot" class="hidden" tabindex="-1" autocomplete="off"
                                 aria-hidden="true" />
 
+                            <!-- Email -->
                             <div class="relative">
                                 <label class="sr-only">Email</label>
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -54,6 +58,7 @@
                                     autocomplete="email" />
                             </div>
 
+                            <!-- Password -->
                             <div class="space-y-2">
                                 <div class="relative">
                                     <label class="sr-only">Password</label>
@@ -76,7 +81,7 @@
                                 </div>
                             </div>
 
-                            <!-- reCAPTCHA info (no visible widget; token is generated under the hood) -->
+                            <!-- reCAPTCHA status -->
                             <div class="flex items-center justify-between">
                                 <span class="text-[11px] text-gray-500 inline-flex items-center gap-1">
                                     <i class="mdi mdi-shield-check-outline"></i>
@@ -88,6 +93,7 @@
                                 </span>
                             </div>
 
+                            <!-- Forgot password -->
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-gray-700">&nbsp;</span>
                                 <button type="button" class="text-sm text-primary hover:underline"
@@ -96,6 +102,7 @@
                                 </button>
                             </div>
 
+                            <!-- Submit -->
                             <div class="pt-1">
                                 <button
                                     class="w-full py-2.5 px-4 rounded-xl bg-primary text-white font-semibold tracking-wide shadow-md hover:shadow-lg hover:bg-tertiary transition disabled:opacity-60 disabled:cursor-not-allowed"
@@ -107,6 +114,7 @@
                                 </button>
                             </div>
 
+                            <!-- Divider -->
                             <div class="relative my-4">
                                 <div class="absolute inset-0 flex items-center">
                                     <span class="w-full border-t border-gray-200"></span>
@@ -116,6 +124,7 @@
                                 </div>
                             </div>
 
+                            <!-- Google -->
                             <div>
                                 <button type="button"
                                     class="w-full py-2.5 px-4 rounded-xl bg-white text-gray-800 font-semibold tracking-wide border border-gray-300/80 shadow-sm hover:shadow-md hover:bg-gray-50 transition disabled:opacity-60"
@@ -128,6 +137,7 @@
                                 </button>
                             </div>
 
+                            <!-- Register -->
                             <div class="text-center text-xs mt-3">
                                 <router-link to="/register" class="text-primary hover:underline">
                                     Don't have an account? <span class="font-semibold">Register</span>
@@ -154,119 +164,114 @@
     </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onMounted, nextTick } from "vue";
+import { useRouter } from "vue-router";
 import ToasterComponent from "../components/ToasterComponent.vue";
 import { useAuthStore } from "@/stores/auth";
 
-export default {
-    data() {
-        return {
-            email: "",
-            password: "",
-            showPassword: false,
-            capsOn: false,
-            honeypot: "",
-            _ssoHandled: false,
+defineOptions({ name: "LoginPage" });
 
-            // reCAPTCHA status UI (optional)
-            recaptchaReady: false,
-            recaptchaError: "",
-        };
-    },
-    computed: {
-        auth() {
-            return useAuthStore();
-        },
-        canSubmit() {
-            return this.email.trim().length > 0 && this.password.length > 0 && !this.honeypot;
-        },
-        recaptchaStatusClass() {
-            if (this.recaptchaError) return "text-red-600";
-            return this.recaptchaReady ? "text-green-700" : "text-gray-500";
-        },
-        recaptchaIconClass() {
-            if (this.recaptchaError) return "mdi mdi-close-circle-outline";
-            return this.recaptchaReady ? "mdi mdi-check-circle-outline" : "mdi mdi-dots-horizontal-circle-outline";
-        },
-        recaptchaStatusText() {
-            if (this.recaptchaError) return "unavailable";
-            return this.recaptchaReady ? "ready" : "initializing…";
-        },
-    },
-    methods: {
-        async onSubmit() {
-            if (this.honeypot) return;
+const router = useRouter();
+const auth = useAuthStore();
 
-            try {
-                // get a token for the `login` action from reCAPTCHA Enterprise
-                const captchaToken = await this.auth.getCaptchaToken("login");
-                const res = await this.auth.login(this.email, this.password, captchaToken);
+const email = ref("");
+const password = ref("");
+const showPassword = ref(false);
+const capsOn = ref(false);
+const honeypot = ref("");
+const _ssoHandled = ref(false);
 
-                if (res?.requiresVerification || this.auth.requiresVerification) {
-                    this.$refs.toast.showToast("info", "Please verify your email before logging in.");
-                    this.$router.push({ name: "verify-prompt", query: { email: this.email } });
-                    return;
-                }
-                if (res?.requires2FA) return;
+const recaptchaReady = ref(false);
+const recaptchaError = ref("");
+const toast = ref(null);
 
-                this.$refs.toast.showToast("success", "Login successful!");
-            } catch (error) {
-                // backend will return 403 with "Captcha verification failed" if token missing/low score
-                this.$refs.toast.showToast("warning", error.message || "Invalid login credentials!");
-            }
-        },
-        forgotPassword() {
-            this.$refs.toast.showToast("info", "Please contact support to reset your password.");
-        },
-        detectCaps(e) {
-            if (e.getModifierState) this.capsOn = e.getModifierState("CapsLock");
-        },
-        signInWithSchoolAccount() {
-            try {
-                this.auth.startGoogleLogin();
-            } catch (e) {
-                this.$refs.toast.showToast("warning", e.message || "Unable to start Google sign-in");
-            }
-        },
-        tryConsumeSso({ suppressToast = false } = {}) {
-            if (this._ssoHandled) return;
-            try {
-                const consumed = this.auth.consumeSsoFromHash();
-                if (consumed) {
-                    this._ssoHandled = true;
-                    if (!suppressToast) this.$refs.toast?.showToast("success", "Signed in with school account");
-                }
-            } catch (e) {
-                this._ssoHandled = true;
-                if (!suppressToast) this.$refs.toast?.showToast("warning", e.message || "Google sign-in failed");
-            }
-        },
-        checkRecaptchaReady() {
-            try {
-                const g = window.grecaptcha?.enterprise || window.grecaptcha;
-                if (g?.ready) {
-                    g.ready(() => {
-                        this.recaptchaReady = true;
-                    });
-                } else {
-                    // try again shortly if script loads late
-                    setTimeout(this.checkRecaptchaReady, 600);
-                }
-            } catch (e) {
-                this.recaptchaError = "not loaded";
-            }
-        },
-    },
-    components: { ToasterComponent },
-    mounted() {
-        // SSO consume
-        this.tryConsumeSso();
-        this.$nextTick(() => this.tryConsumeSso({ suppressToast: true }));
+// Computed
+const canSubmit = computed(() => email.value.trim().length > 0 && password.value.length > 0 && !honeypot.value);
+const recaptchaStatusClass = computed(() => {
+    if (recaptchaError.value) return "text-red-600";
+    return recaptchaReady.value ? "text-green-700" : "text-gray-500";
+});
+const recaptchaIconClass = computed(() => {
+    if (recaptchaError.value) return "mdi mdi-close-circle-outline";
+    return recaptchaReady.value ? "mdi mdi-check-circle-outline" : "mdi mdi-dots-horizontal-circle-outline";
+});
+const recaptchaStatusText = computed(() => {
+    if (recaptchaError.value) return "unavailable";
+    return recaptchaReady.value ? "ready" : "initializing…";
+});
 
-        // reCAPTCHA status (visual only; token is fetched in apiAuth.login)
-        this.checkRecaptchaReady();
-    },
+// Methods
+const detectCaps = (e) => {
+    if (e.getModifierState) capsOn.value = e.getModifierState("CapsLock");
 };
+
+const forgotPassword = () => {
+    toast.value.showToast("info", "Please contact support to reset your password.");
+};
+
+const onSubmit = async () => {
+    if (honeypot.value) return;
+    try {
+        const captchaToken = await auth.getCaptchaToken("login");
+        const res = await auth.login(email.value, password.value, captchaToken);
+
+        if (res?.requiresVerification || auth.requiresVerification) {
+            toast.value.showToast("info", "Please verify your email before logging in.");
+            router.push({ name: "verify-prompt", query: { email: email.value } });
+            return;
+        }
+        if (res?.requires2FA) return;
+
+        toast.value.showToast("success", "Login successful!");
+    } catch (error) {
+        toast.value.showToast("warning", error.message || "Invalid login credentials!");
+    }
+};
+
+const signInWithSchoolAccount = () => {
+    try {
+        auth.startGoogleLogin();
+    } catch (e) {
+        toast.value.showToast("warning", e.message || "Unable to start Google sign-in");
+    }
+};
+
+const tryConsumeSso = ({ suppressToast = false } = {}) => {
+    if (_ssoHandled.value) return;
+    try {
+        const consumed = auth.consumeSsoFromHash();
+        if (consumed) {
+            _ssoHandled.value = true;
+            if (!suppressToast) toast.value?.showToast("success", "Signed in with school account");
+        }
+    } catch (e) {
+        _ssoHandled.value = true;
+        if (!suppressToast) toast.value?.showToast("warning", e.message || "Google sign-in failed");
+    }
+};
+
+const checkRecaptchaReady = () => {
+    try {
+        const g = window.grecaptcha?.enterprise || window.grecaptcha;
+        if (g?.ready) {
+            g.ready(() => {
+                recaptchaReady.value = true;
+            });
+        } else {
+            setTimeout(checkRecaptchaReady, 600);
+        }
+    } catch (e) {
+        recaptchaError.value = "not loaded";
+    }
+};
+
+// Lifecycle
+onMounted(() => {
+    tryConsumeSso();
+    nextTick(() => tryConsumeSso({ suppressToast: true }));
+    checkRecaptchaReady();
+});
 </script>
 
 <style scoped>

@@ -1,5 +1,6 @@
 <template>
     <div class="min-h-screen relative overflow-hidden">
+        <!-- Background -->
         <div class="absolute inset-0">
             <div class="h-full w-full bg-cover bg-center" :style="`background-image:url(/images/bg.jpg)`"></div>
             <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
@@ -9,25 +10,31 @@
             </div>
         </div>
 
+        <!-- Loader -->
         <div v-if="auth.isLoading || verifying"
             class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
             <div class="loader"></div>
         </div>
 
+        <!-- Content -->
         <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
             <div class="w-full max-w-md">
+                <!-- Header -->
                 <div class="mb-6 text-center">
                     <a href="index.html" class="inline-flex items-center justify-center">
                         <img src="/images/logo.png" alt="OSAS" class="h-14 w-auto" />
                     </a>
-                    <h1 class="mt-4 text-2xl font-extrabold tracking-wide text-white">Office of Student Affairs &
-                        Services</h1>
+                    <h1 class="mt-4 text-2xl font-extrabold tracking-wide text-white">
+                        Office of Student Affairs & Services
+                    </h1>
                     <p class="mt-1 text-primary-text/90 text-sm">Serve. Support. Empower.</p>
                 </div>
 
+                <!-- Card -->
                 <div
                     class="group rounded-2xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl ring-1 ring-black/5 hover:ring-black/10 transition">
                     <div class="p-6 sm:p-7">
+                        <!-- Info -->
                         <div class="mb-5 text-center">
                             <div class="inline-flex items-center gap-2">
                                 <span class="inline-grid h-8 w-8 place-items-center rounded-full bg-primary/10">
@@ -38,6 +45,7 @@
                             <p class="text-xs text-gray-500 mt-2">We sent a verification link to your email</p>
                         </div>
 
+                        <!-- Success -->
                         <div v-if="status === 'success'"
                             class="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 text-sm">
                             <div class="flex items-center gap-2">
@@ -50,6 +58,7 @@
                             </button>
                         </div>
 
+                        <!-- Error -->
                         <div v-else-if="status === 'error'"
                             class="rounded-lg bg-rose-50 border border-rose-200 text-rose-700 p-3 text-sm">
                             <div class="flex items-center gap-2">
@@ -59,6 +68,7 @@
                             </div>
                         </div>
 
+                        <!-- Idle -->
                         <div v-else class="rounded-lg bg-amber-50 border border-amber-200 text-amber-700 p-3 text-sm">
                             <div class="flex items-center gap-2">
                                 <i class="mdi mdi-timer-sand-empty text-lg"></i>
@@ -66,6 +76,7 @@
                             </div>
                         </div>
 
+                        <!-- Form -->
                         <form @submit.prevent="onResend" class="space-y-3 mt-5">
                             <div class="relative">
                                 <label class="sr-only">Email</label>
@@ -94,6 +105,7 @@
                         </form>
                     </div>
 
+                    <!-- Footer -->
                     <div class="px-6 sm:px-7 pb-6">
                         <div class="flex items-center justify-between text-[11px] text-gray-500">
                             <span>OSAS Kiosk v1.0</span>
@@ -102,6 +114,7 @@
                     </div>
                 </div>
 
+                <!-- Bottom text -->
                 <div class="mt-6 text-center text-xs text-gray-300">
                     <p>By continuing, you agree to our Student Portal Guidelines.</p>
                 </div>
@@ -112,59 +125,59 @@
     </div>
 </template>
 
-<script>
-import ToasterComponent from "../components/ToasterComponent.vue";
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import ToasterComponent from "../components/ToasterComponent.vue";
 
-export default {
-    data() {
-        return {
-            email: this.$route.query.email || "",
-            status: "idle",
-            verifying: false,
-        };
-    },
-    computed: {
-        auth() {
-            return useAuthStore();
-        },
-        canSubmit() {
-            return this.email.trim().length > 0;
-        },
-    },
-    async mounted() {
-        const token = this.$route.query.token;
-        if (token) {
-            try {
-                this.verifying = true;
-                await this.auth.verifyEmail(token);
-                this.status = "success";
-                this.$refs.toast.showToast("success", "Email verified successfully.");
-            } catch (e) {
-                this.status = "error";
-                this.$refs.toast.showToast("warning", e.message || "Verification link invalid or expired.");
-            } finally {
-                this.verifying = false;
-            }
-        } else if (this.$route.query.email) {
-            this.status = "idle";
-        }
-    },
-    methods: {
-        async onResend() {
-            try {
-                await this.auth.resendVerification(this.email);
-                this.$refs.toast.showToast("info", "Verification email sent. Please check your inbox.");
-            } catch (e) {
-                this.$refs.toast.showToast("warning", e.message || "Failed to resend verification email.");
-            }
-        },
-        goLogin() {
-            this.$router.push({ name: "login" });
-        },
-    },
-    components: { ToasterComponent },
+// Refs
+const toast = ref(null);
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
+
+// State
+const email = ref(route.query.email || "");
+const status = ref("idle");
+const verifying = ref(false);
+
+// Computed
+const canSubmit = computed(() => email.value.trim().length > 0);
+
+// Methods
+const goLogin = () => {
+    router.push({ name: "login" });
 };
+
+const onResend = async () => {
+    try {
+        await auth.resendVerification(email.value);
+        toast.value?.showToast("info", "Verification email sent. Please check your inbox.");
+    } catch (e) {
+        toast.value?.showToast("warning", e.message || "Failed to resend verification email.");
+    }
+};
+
+// Lifecycle
+onMounted(async () => {
+    const token = route.query.token;
+    if (token) {
+        try {
+            verifying.value = true;
+            await auth.verifyEmail(token);
+            status.value = "success";
+            toast.value?.showToast("success", "Email verified successfully.");
+        } catch (e) {
+            status.value = "error";
+            toast.value?.showToast("warning", e.message || "Verification link invalid or expired.");
+        } finally {
+            verifying.value = false;
+        }
+    } else if (route.query.email) {
+        status.value = "idle";
+    }
+});
 </script>
 
 <style scoped>

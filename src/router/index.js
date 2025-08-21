@@ -49,7 +49,19 @@ const routes = [
     meta: { title: "Dashboard" },
     path: "/dashboard",
     name: "dashboard",
-    component: () => import("@/main/IndexPage.vue"),
+    component: () => import("@/views/IndexPage.vue"),
+  },
+  {
+    meta: { title: "Clubs & Organizations" },
+    path: "/clubs-organization",
+    name: "clubs-organization",
+    component: () => import("@/views/ClubsOrganizationPage.vue"),
+  },
+  {
+    meta: { title: "Calendar of Activities" },
+    path: "/activity-calendar",
+    name: "activity-calendar",
+    component: () => import("@/views/CalendarActivityPage.vue"),
   },
 
   // ==========================
@@ -58,7 +70,7 @@ const routes = [
   {
     path: "/:pathMatch(.*)*",
     name: "NotFound",
-    component: () => import("@/main/ErrorPage.vue"),
+    component: () => import("@/views/ErrorPage.vue"),
   },
 ];
 

@@ -93,59 +93,55 @@
     </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import ToasterComponent from "@/components/ToasterComponent.vue";
 
-export default {
-    name: "VerifyPrompt",
-    components: { ToasterComponent },
-    data() {
-        return {
-            cooldown: 0,
-            cooldownTimer: null,
-        };
-    },
-    computed: {
-        auth() {
-            return useAuthStore();
-        },
-        displayEmail() {
-            // Prefer query ?email=... ; fallback to stored user email if any
-            return this.$route.query.email || this.auth.user?.email || "";
-        },
-    },
-    methods: {
-        async onResend() {
-            if (!this.displayEmail) {
-                this.$refs.toast.showToast("warning", "No email found. Please go back and enter your email.");
-                return;
-            }
-            try {
-                await this.auth.resendVerification(this.displayEmail);
-                this.$refs.toast.showToast("success", "Verification email sent. Please check your inbox.");
-                this.startCooldown(30);
-            } catch (e) {
-                this.$refs.toast.showToast("warning", e.message || "Failed to resend verification email.");
-            }
-        },
-        openInbox() {
-            // Open Gmail in a new tab; user can switch providers as needed
-            window.open("https://mail.google.com/", "_blank", "noopener");
-        },
-        startCooldown(seconds) {
-            this.cooldown = seconds;
-            if (this.cooldownTimer) clearInterval(this.cooldownTimer);
-            this.cooldownTimer = setInterval(() => {
-                if (this.cooldown > 0) this.cooldown -= 1;
-                if (this.cooldown === 0) clearInterval(this.cooldownTimer);
-            }, 1000);
-        },
-    },
-    unmounted() {
-        if (this.cooldownTimer) clearInterval(this.cooldownTimer);
-    },
-};
+defineOptions({ name: "VerifyPrompt" });
+
+const auth = useAuthStore();
+const route = useRoute();
+const toast = ref(null);
+
+const cooldown = ref(0);
+let cooldownTimer = null;
+
+const displayEmail = computed(() => {
+    return route.query.email || auth.user?.email || "";
+});
+
+async function onResend() {
+    if (!displayEmail.value) {
+        toast.value?.showToast("warning", "No email found. Please go back and enter your email.");
+        return;
+    }
+    try {
+        await auth.resendVerification(displayEmail.value);
+        toast.value?.showToast("success", "Verification email sent. Please check your inbox.");
+        startCooldown(30);
+    } catch (e) {
+        toast.value?.showToast("warning", e.message || "Failed to resend verification email.");
+    }
+}
+
+function openInbox() {
+    window.open("https://mail.google.com/", "_blank", "noopener");
+}
+
+function startCooldown(seconds) {
+    cooldown.value = seconds;
+    if (cooldownTimer) clearInterval(cooldownTimer);
+    cooldownTimer = setInterval(() => {
+        if (cooldown.value > 0) cooldown.value -= 1;
+        if (cooldown.value === 0) clearInterval(cooldownTimer);
+    }, 1000);
+}
+
+onUnmounted(() => {
+    if (cooldownTimer) clearInterval(cooldownTimer);
+});
 </script>
 
 <style scoped>

@@ -28,83 +28,83 @@
     </div>
 </template>
 
-<script>
-export default {
-    data() {
-        return {
-            toasts: [],
-            nextToastId: 0,
-        };
-    },
-    methods: {
-        /**
-         * Call this method to display a toast notification.
-         * @param {string} type - "success", "error", "warning", or "info"
-         * @param {string} message - The message to display.
-         */
-        showToast(type, message) {
-            const id = this.nextToastId++;
-            const toast = { id, type, message };
-            this.toasts.push(toast);
-            // Auto-remove toast after 2 seconds
-            setTimeout(() => {
-                this.removeToast(id);
-            }, 2000);
-        },
-        removeToast(id) {
-            this.toasts = this.toasts.filter((t) => t.id !== id);
-        },
+<script setup>
+import { ref } from "vue";
 
-        // Text color for each toast type
-        toastTextClass(type) {
-            switch (type) {
-                case "success":
-                    return "text-green-800";
-                case "error":
-                    return "text-red-800";
-                case "warning":
-                    return "text-yellow-800";
-                case "info":
-                    return "text-purple-800";
-                default:
-                    return "text-gray-800";
-            }
-        },
+defineOptions({ name: "ToastNotifications" });
 
-        // Left border + background for each toast type
-        toastBgClass(type) {
-            switch (type) {
-                case "success":
-                    return "bg-green-50 border-green-400";
-                case "error":
-                    return "bg-red-50 border-red-400";
-                case "warning":
-                    return "bg-yellow-50 border-yellow-400";
-                case "info":
-                    // "info" is given a purple highlight to match the theme
-                    return "bg-purple-50 border-purple-400";
-                default:
-                    return "bg-white border-gray-300";
-            }
-        },
+const toasts = ref([]);
+let nextToastId = 0;
 
-        // Icon for each toast type
-        toastIcon(type) {
-            switch (type) {
-                case "success":
-                    return "mdi mdi-check-circle text-green-500 text-xl";
-                case "error":
-                    return "mdi mdi-close-circle text-red-500 text-xl";
-                case "warning":
-                    return "mdi mdi-alert-circle text-yellow-500 text-xl";
-                case "info":
-                    return "mdi mdi-information text-purple-500 text-xl";
-                default:
-                    return "mdi mdi-bell text-gray-500 text-xl";
-            }
-        },
-    },
-};
+/**
+ * Call this method to display a toast notification.
+ * @param {string} type - "success", "error", "warning", or "info"
+ * @param {string} message - The message to display.
+ */
+function showToast(type, message) {
+    const id = nextToastId++;
+    const toast = { id, type, message };
+    toasts.value.push(toast);
+    // Auto-remove toast after 2 seconds
+    setTimeout(() => {
+        removeToast(id);
+    }, 2000);
+}
+
+function removeToast(id) {
+    toasts.value = toasts.value.filter((t) => t.id !== id);
+}
+
+// Text color for each toast type
+function toastTextClass(type) {
+    switch (type) {
+        case "success":
+            return "text-green-800";
+        case "error":
+            return "text-red-800";
+        case "warning":
+            return "text-yellow-800";
+        case "info":
+            return "text-purple-800";
+        default:
+            return "text-gray-800";
+    }
+}
+
+// Left border + background for each toast type
+function toastBgClass(type) {
+    switch (type) {
+        case "success":
+            return "bg-green-50 border-green-400";
+        case "error":
+            return "bg-red-50 border-red-400";
+        case "warning":
+            return "bg-yellow-50 border-yellow-400";
+        case "info":
+            return "bg-purple-50 border-purple-400";
+        default:
+            return "bg-white border-gray-300";
+    }
+}
+
+// Icon for each toast type
+function toastIcon(type) {
+    switch (type) {
+        case "success":
+            return "mdi mdi-check-circle text-green-500 text-xl";
+        case "error":
+            return "mdi mdi-close-circle text-red-500 text-xl";
+        case "warning":
+            return "mdi mdi-alert-circle text-yellow-500 text-xl";
+        case "info":
+            return "mdi mdi-information text-purple-500 text-xl";
+        default:
+            return "mdi mdi-bell text-gray-500 text-xl";
+    }
+}
+
+// expose showToast so parent components can call it via template ref
+defineExpose({ showToast });
 </script>
 
 <style scoped>

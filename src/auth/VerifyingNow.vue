@@ -81,72 +81,72 @@
     </div>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted, onUnmounted, computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import ToasterComponent from "@/components/ToasterComponent.vue";
 
-export default {
-    name: "VerifyingNow",
-    components: { ToasterComponent },
-    data() {
-        return {
-            state: "loading", // 'loading' | 'success' | 'error'
-            countdown: 3,
-            tHandle: null,
-            errorMsg: "",
-        };
-    },
-    computed: {
-        auth() {
-            return useAuthStore();
-        },
-        token() {
-            return this.$route.query.token || "";
-        },
-    },
-    methods: {
-        async verify() {
-            if (!this.token) {
-                this.state = "error";
-                this.errorMsg = "Missing verification token.";
-                return;
-            }
-            try {
-                await this.auth.verifyEmail(this.token); // calls GET /auth/verify-email?token=...
-                this.state = "success";
-                this.$refs.toast?.showToast("success", "Email verified!");
-                this.startCountdown();
-            } catch (e) {
-                this.state = "error";
-                this.errorMsg = e.message || "Verification failed.";
-                this.$refs.toast?.showToast("warning", this.errorMsg);
-            }
-        },
-        startCountdown() {
-            this.tHandle = setInterval(() => {
-                if (this.countdown > 0) this.countdown -= 1;
-                if (this.countdown === 0) {
-                    clearInterval(this.tHandle);
-                    this.goLogin();
-                }
-            }, 1000);
-        },
-        goLogin() {
-            this.$router.replace({ name: "login" });
-        },
-        retry() {
-            this.state = "loading";
-            this.errorMsg = "";
-            this.verify();
-        },
-    },
-    mounted() {
-        this.verify();
-    },
-    unmounted() {
-        if (this.tHandle) clearInterval(this.tHandle);
-    },
+defineOptions({ name: "VerifyingNow" });
+
+const auth = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+
+const state = ref("loading"); // 'loading' | 'success' | 'error'
+const countdown = ref(3);
+let tHandle = null;
+const errorMsg = ref("");
+
+const toast = ref(null);
+
+const token = computed(() => String(route.query.token || ""));
+
+const startCountdown = () => {
+    tHandle = setInterval(() => {
+        if (countdown.value > 0) countdown.value -= 1;
+        if (countdown.value === 0) {
+            clearInterval(tHandle);
+            goLogin();
+        }
+    }, 1000);
 };
+
+const goLogin = () => {
+    router.replace({ name: "login" });
+};
+
+const verify = async () => {
+    if (!token.value) {
+        state.value = "error";
+        errorMsg.value = "Missing verification token.";
+        return;
+    }
+    try {
+        await auth.verifyEmail(token.value); // GET /auth/verify-email?token=...
+        state.value = "success";
+        toast.value?.showToast?.("success", "Email verified!");
+        startCountdown();
+    } catch (e) {
+        state.value = "error";
+        errorMsg.value = e?.message || "Verification failed.";
+        toast.value?.showToast?.("warning", errorMsg.value);
+    }
+};
+
+const retry = () => {
+    state.value = "loading";
+    errorMsg.value = "";
+    verify();
+};
+
+onMounted(() => {
+    verify();
+});
+
+onUnmounted(() => {
+    if (tHandle) clearInterval(tHandle);
+});
 </script>
 
 <style scoped>
