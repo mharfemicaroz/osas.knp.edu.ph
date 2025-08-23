@@ -12,29 +12,26 @@ export const useUserStore = defineStore("user", () => {
     data: [],
   });
 
-  // Track loading and error states
   const isLoading = ref(false);
   const error = ref(null);
-
-  // Control to indicate we've fetched data once already
   const isLoaded = ref(false);
-
-  // Keep selected user for detail view
   const selectedUser = ref(null);
 
+  // NEW: cache clubs per user and currently selected user's clubs
+  const clubsByUser = ref({}); // { [userId]: Club[] }
+  const selectedUserClubs = ref([]); // convenience for UI
+
+  // --- INTERNAL HELPERS ---
+  const upsertInList = (user) => {
+    if (!user?.id) return;
+    const idx = users.value.data.findIndex((u) => u.id === user.id);
+    if (idx !== -1) users.value.data[idx] = user;
+  };
+
   // --- ACTIONS ---
-
-  /**
-   * Fetch a list of users with pagination support
-   */
   const fetchAll = async (queryParams = {}, forceRefresh = false) => {
-    // Clear any old error
     error.value = null;
-
-    // Skip API if data already loaded and not forcing refresh
-    if (!forceRefresh && isLoaded.value) {
-      return;
-    }
+    if (!forceRefresh && isLoaded.value) return;
 
     try {
       isLoading.value = true;
@@ -50,31 +47,28 @@ export const useUserStore = defineStore("user", () => {
 
       isLoaded.value = true;
     } catch (err) {
-      error.value = err?.response?.message || "Failed to fetch users";
+      error.value =
+        err?.response?.data?.message || err?.message || "Failed to fetch users";
     } finally {
       isLoading.value = false;
     }
   };
 
-  /**
-   * Fetch a single user by ID
-   */
   const fetchById = async (id) => {
     error.value = null;
     try {
       isLoading.value = true;
       const response = await userService.getById(id);
       selectedUser.value = response;
+      upsertInList(response);
     } catch (err) {
-      error.value = err?.response?.message || "Failed to fetch user";
+      error.value =
+        err?.response?.data?.message || err?.message || "Failed to fetch user";
     } finally {
       isLoading.value = false;
     }
   };
 
-  /**
-   * Create a new user
-   */
   const create = async (data) => {
     error.value = null;
     try {
@@ -83,59 +77,103 @@ export const useUserStore = defineStore("user", () => {
       users.value.data.push(response);
       users.value.total += 1;
     } catch (err) {
-      error.value = err?.response?.message || "Failed to create user";
+      error.value =
+        err?.response?.data?.message || err?.message || "Failed to create user";
     } finally {
       isLoading.value = false;
     }
   };
 
-  /**
-   * Update an existing user
-   */
   const updateById = async (id, data) => {
     error.value = null;
     try {
       isLoading.value = true;
       const response = await userService.updateById(id, data);
-      const index = users.value.data.findIndex((u) => u.id === id);
-      if (index !== -1) {
-        users.value.data[index] = response;
-      }
-      // Update selectedUser if it's the same user being updated
-      if (selectedUser.value?.id === id) {
-        selectedUser.value = response;
-      }
+      upsertInList(response);
+      if (selectedUser.value?.id === id) selectedUser.value = response;
+      return response;
     } catch (err) {
-      error.value = err?.response?.message || "Failed to update user";
+      error.value =
+        err?.response?.data?.message || err?.message || "Failed to update user";
+      throw err;
     } finally {
       isLoading.value = false;
     }
   };
 
-  /**
-   * Delete a user by ID
-   */
   const deleteById = async (id) => {
     error.value = null;
     try {
       isLoading.value = true;
       await userService.delete(id);
       users.value.data = users.value.data.filter((u) => u.id !== id);
-      users.value.total -= 1;
-      // Clear selectedUser if it's the same user being deleted
-      if (selectedUser.value?.id === id) {
-        selectedUser.value = null;
-      }
+      users.value.total = Math.max(0, (users.value.total || 1) - 1);
+      if (selectedUser.value?.id === id) selectedUser.value = null;
     } catch (err) {
-      error.value = err?.response?.message || "Failed to delete user";
+      error.value =
+        err?.response?.data?.message || err?.message || "Failed to delete user";
     } finally {
       isLoading.value = false;
     }
   };
 
-  /**
-   * Reset store if you ever need to (e.g. on logout)
-   */
+  // NEW: upload avatar
+  const uploadAvatar = async (id, fileOrData) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      const user = await userService.uploadAvatar(id, fileOrData);
+      upsertInList(user);
+      if (selectedUser.value?.id === id) selectedUser.value = user;
+      return user;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to upload avatar";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // NEW: upload cover
+  const uploadCover = async (id, fileOrData) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      const user = await userService.uploadCover(id, fileOrData);
+      upsertInList(user);
+      if (selectedUser.value?.id === id) selectedUser.value = user;
+      return user;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to upload cover";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // NEW: change password (no state changes)
+  const changePassword = async ({ old_password, new_password }) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      return await userService.changePassword({ old_password, new_password });
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to change password";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const resetStore = () => {
     users.value = {
       total: 0,
@@ -150,21 +188,57 @@ export const useUserStore = defineStore("user", () => {
     error.value = null;
   };
 
-  // --- RETURN ---
+  const fetchUserClubs = async (userId, { force = false } = {}) => {
+    error.value = null;
+    try {
+      const key = String(userId);
+
+      // Serve cache unless forced
+      if (!force && Array.isArray(clubsByUser.value[key])) {
+        selectedUserClubs.value = clubsByUser.value[key]; // <-- ensure UI gets data
+        return clubsByUser.value[key];
+      }
+
+      isLoading.value = true;
+      const clubs = await userService.getClubs(userId);
+
+      clubsByUser.value[key] = clubs;
+
+      // Always reflect the latest fetched clubs in the UI
+      selectedUserClubs.value = clubs;
+
+      return clubs;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to fetch user's clubs";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   return {
-    // State
+    // state
     users,
     selectedUser,
+    selectedUserClubs, // NEW
+    clubsByUser, // NEW
     isLoading,
     error,
     isLoaded,
 
-    // Actions
+    // actions
     fetchAll,
     fetchById,
     create,
     updateById,
     deleteById,
+    uploadAvatar, // NEW
+    uploadCover, // NEW
+    changePassword, // NEW
+    fetchUserClubs,
     resetStore,
   };
 });

@@ -80,7 +80,9 @@ export const useAuthStore = defineStore("auth", () => {
         twoFAEnabled: data.userdata.twoFAEnabled,
         first_name: data.userdata.first_name,
         last_name: data.userdata.last_name,
+        username: data.userdata.username,
       };
+      console.log("user", user.value);
       localStorage.setItem("userData", JSON.stringify(user.value));
 
       router.push("/dashboard");
@@ -112,6 +114,7 @@ export const useAuthStore = defineStore("auth", () => {
         twoFAEnabled: response.data.userdata.twoFAEnabled,
         first_name: response.data.userdata.first_name,
         last_name: response.data.userdata.last_name,
+        username: response.data.userdata.username,
       };
       localStorage.setItem("userData", JSON.stringify(user.value));
 

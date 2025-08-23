@@ -77,8 +77,14 @@ export const useClubDocStore = defineStore("clubDoc", () => {
     try {
       isLoading.value = true;
       const res = await clubDocService.create(data);
-      docs.value.data.unshift(res);
-      docs.value.total += 1;
+      const idx = docs.value.data.findIndex((d) => d.id === res?.id);
+      if (idx !== -1) {
+        docs.value.data.splice(idx, 1, res);
+      } else {
+        docs.value.data = [res, ...docs.value.data];
+        docs.value.total += 1;
+      }
+      selectedDoc.value = res;
       return res;
     } catch (err) {
       error.value = err?.response?.data?.message || "Failed to create club doc";
@@ -94,7 +100,7 @@ export const useClubDocStore = defineStore("clubDoc", () => {
       isLoading.value = true;
       const res = await clubDocService.updateById(id, data);
       const idx = docs.value.data.findIndex((d) => d.id === id);
-      if (idx !== -1) docs.value.data[idx] = res;
+      if (idx !== -1) docs.value.data.splice(idx, 1, res);
       if (selectedDoc.value?.id === id) selectedDoc.value = res;
       return res;
     } catch (err) {

@@ -1,112 +1,156 @@
 <!-- src/components/BaseTable.vue -->
 <template>
-    <div ref="tableContainer" class="table-container relative rounded-lg border border-gray-200 shadow-sm bg-white">
-        <table class="w-full border-collapse bg-white min-w-max">
-            <thead class="bg-white text-gray-700 text-sm border-b">
-                <tr>
-                    <!-- Checkbox column -->
-                    <th v-if="checkable" class="p-2 w-10 text-center">
-                        <TableCheckboxCell :modelValue="allSelected" @update:modelValue="toggleSelectAll" />
-                    </th>
-
-                    <!-- Table columns -->
-                    <th v-for="col in columns" :key="col.key" class="px-4 py-2 text-left whitespace-nowrap">
-                        <div class="flex items-center justify-between">
-                            <span class="font-medium">{{ col.label }}</span>
-                            <div class="flex items-center gap-2">
-                                <BaseButton v-if="col.sortable" :icon="internalSortKey === col.key
-                                    ? internalSortOrder === 'asc'
-                                        ? mdiChevronUp
-                                        : mdiChevronDown
-                                    : mdiChevronDown
-                                    " small @click="toggleSort(col.key)" />
-                                <BaseButton v-if="col.filterable" :icon="mdiMagnify" small
-                                    @click="toggleFilterDropdown(col.key)" />
-                            </div>
-                        </div>
-                        <transition name="fade">
-                            <div v-if="showFilters[col.key]" class="mt-1 p-2 border rounded bg-white shadow-md">
-                                <input v-model="internalFilters[col.key]"
-                                    class="w-full px-2 py-1 text-xs border rounded" placeholder="Filter..."
-                                    @input="setFilter(col.key, $event.target.value)" />
-                            </div>
-                        </transition>
-                    </th>
-
-                    <!-- Action column (conditionally shown) -->
-                    <th v-if="showAction" class="px-2 py-1 whitespace-nowrap text-right w-1"></th>
-                </tr>
-            </thead>
-
-            <tbody>
-                <!-- Data rows -->
-                <tr v-for="item in safeData.data" :key="item.id" class="border-t text-sm hover:bg-gray-50">
-                    <!-- Checkbox cell -->
-                    <td v-if="checkable" class="p-2 w-10 text-center" data-label="Select">
-                        <TableCheckboxCell :modelValue="selectedRows.has(item.id)"
-                            @update:modelValue="toggleSelectRow($event, item)" />
-                    </td>
-
-                    <!-- Data cells -->
-                    <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap"
-                        :data-label="col.label">
-                        <span v-if="col.formatter">
-                            {{ col.formatter(item[col.key], item) }}
-                        </span>
-                        <span v-else>
-                            {{ item[col.key] || '-' }}
-                        </span>
-                    </td>
-
-                    <!-- Action cell with slot integration (conditionally shown) -->
-                    <td v-if="showAction" class="px-4 py-2 whitespace-nowrap" data-label="Action">
-                        <slot name="cell-actions" :row="item">
-                            <BaseButtons>
-                                <BaseButton :icon="mdiPencil" small @click="editRow(item)" />
-                            </BaseButtons>
-                        </slot>
-                    </td>
-                </tr>
-
-                <!-- Aggregate Totals Row (only rendered if at least one column is set with aggregate: true) -->
-                <tr v-if="hasAggregates" class="border-t text-sm font-semibold bg-gray-50">
-                    <!-- If checkable, insert an empty cell for the checkbox column -->
-                    <td v-if="checkable" class="p-2 w-10"></td>
-
-                    <!-- For each column, show the aggregated value if enabled; otherwise empty -->
-                    <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap"
-                        :data-label="col.label">
-                        <span v-if="col.aggregate">{{ aggregates[col.key] }}</span>
-                    </td>
-
-                    <!-- Empty cell for action column -->
-                    <td v-if="showAction" class="px-4 py-2"></td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Pagination Footer -->
-        <div class="p-3 border-t bg-white text-sm flex flex-col sm:flex-row sm:justify-between sm:items-center">
-            <span class="mb-2 sm:mb-0">
-                {{ (internalPage - 1) * internalPageSize + 1 }} -
-                {{ Math.min(internalPage * internalPageSize, safeData.total) }} of
-                {{ safeData.total }} items
-            </span>
-            <div class="flex flex-wrap items-center gap-2">
-                <BaseButton :icon="mdiChevronLeft" small :disabled="internalPage === 1"
-                    @click="goToPage(internalPage - 1)" />
-                <BaseButton v-for="(page, index) in paginationPages" :key="index"
-                    :active="page !== '...' && page === internalPage" :label="page" small :disabled="page === '...'"
-                    @click="page !== '...' && goToPage(page)" />
-                <BaseButton :icon="mdiChevronRight" small :disabled="internalPage === totalPages"
-                    @click="goToPage(internalPage + 1)" />
-                <select class="border p-1 text-sm rounded" @change="updatePageSize" :value="internalPageSize">
-                    <option value="5">5 / page</option>
-                    <option value="10">10 / page</option>
-                    <option value="20">20 / page</option>
-                </select>
+    <div class="relative space-y-2">
+        <!-- Optional toolbar -->
+        <div class="flex items-center justify-between">
+            <div>
+                <slot name="toolbar-left" />
+            </div>
+            <div>
+                <slot name="toolbar-right" />
             </div>
         </div>
+
+        <div ref="tableContainer" class="table-container relative rounded-lg border border-gray-200 shadow-sm bg-white">
+            <table class="w-full border-collapse bg-white min-w-max">
+                <thead class="bg-white text-gray-700 text-sm border-b">
+                    <tr>
+                        <!-- Checkbox column -->
+                        <th v-if="checkable" class="p-2 w-10 text-center">
+                            <TableCheckboxCell :modelValue="allSelected" @update:modelValue="toggleSelectAll" />
+                        </th>
+
+                        <!-- Table columns -->
+                        <th v-for="col in columns" :key="col.key" class="px-4 py-2 text-left whitespace-nowrap">
+                            <!-- Dynamic header slot -->
+                            <slot :name="`header-${col.key}`" :column="col"
+                                :sort="{ key: internalSortKey, order: internalSortOrder, toggle: () => toggleSort(col.key) }"
+                                :filter="{
+                                    value: internalFilters[col.key] || '',
+                                    set: (v) => setFilter(col.key, v),
+                                    open: !!showFilters[col.key],
+                                    toggle: () => toggleFilterDropdown(col.key)
+                                }">
+                                <!-- Default header rendering -->
+                                <div class="flex items-center justify-between">
+                                    <span class="font-medium">{{ col.label }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <BaseButton v-if="col.sortable" :icon="internalSortKey === col.key
+                                            ? internalSortOrder === 'asc'
+                                                ? mdiChevronUp
+                                                : mdiChevronDown
+                                            : mdiChevronDown
+                                            " small @click="toggleSort(col.key)" />
+                                        <BaseButton v-if="col.filterable" :icon="mdiMagnify" small
+                                            @click="toggleFilterDropdown(col.key)" />
+                                    </div>
+                                </div>
+
+                                <transition name="fade">
+                                    <div v-if="showFilters[col.key]" class="mt-1 p-2 border rounded bg-white shadow-md">
+                                        <input v-model="internalFilters[col.key]"
+                                            class="w-full px-2 py-1 text-xs border rounded" placeholder="Filter..."
+                                            @input="setFilter(col.key, $event.target.value)" />
+                                    </div>
+                                </transition>
+                            </slot>
+                        </th>
+
+                        <!-- Action column (conditionally shown; kept for backward-compat) -->
+                        <th v-if="showAction" class="px-2 py-1 whitespace-nowrap text-right w-1"></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <!-- Empty state -->
+                    <tr v-if="!safeData.data.length && !loading">
+                        <td :colspan="columns.length + (checkable ? 1 : 0) + (showAction ? 1 : 0)" class="p-6">
+                            <slot name="empty">
+                                <div class="text-center text-sm text-gray-500">No data to display.</div>
+                            </slot>
+                        </td>
+                    </tr>
+
+                    <!-- Data rows -->
+                    <tr v-for="item in safeData.data" :key="item.id ?? item._key ?? JSON.stringify(item)"
+                        class="border-t text-sm hover:bg-gray-50">
+                        <!-- Checkbox cell -->
+                        <td v-if="checkable" class="p-2 w-10 text-center" data-label="Select">
+                            <TableCheckboxCell :modelValue="selectedRows.has(item.id)"
+                                @update:modelValue="toggleSelectRow($event, item)" />
+                        </td>
+
+                        <!-- Data cells -->
+                        <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap"
+                            :data-label="col.label">
+                            <!-- Dynamic cell slot per column -->
+                            <slot :name="`cell-${col.key}`" :row="item" :value="item[col.key]" :column="col">
+                                <span v-if="col.formatter">
+                                    {{ col.formatter(item[col.key], item) }}
+                                </span>
+                                <span v-else>{{ item[col.key] ?? '-' }}</span>
+                            </slot>
+                        </td>
+
+                        <!-- Legacy action cell slot (still supported) -->
+                        <td v-if="showAction" class="px-4 py-2 whitespace-nowrap" data-label="Action">
+                            <!-- Prefer dynamic cell slot via a column with key 'actions' if you add it to columns,
+                   but keep this legacy slot for compatibility -->
+                            <slot name="cell-actions" :row="item">
+                                <BaseButtons>
+                                    <BaseButton :icon="mdiPencil" small @click="editRow(item)" />
+                                </BaseButtons>
+                            </slot>
+                        </td>
+                    </tr>
+
+                    <!-- Aggregate Totals Row -->
+                    <tr v-if="hasAggregates" class="border-t text-sm font-semibold bg-gray-50">
+                        <td v-if="checkable" class="p-2 w-10"></td>
+                        <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap"
+                            :data-label="col.label">
+                            <slot :name="`aggregate-${col.key}`" :value="aggregates[col.key]" :column="col">
+                                <span v-if="col.aggregate">{{ aggregates[col.key] }}</span>
+                            </slot>
+                        </td>
+                        <td v-if="showAction" class="px-4 py-2"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Loading overlay (customizable) -->
+            <slot name="loading-overlay" v-if="loading">
+                <!-- default loader is handled by vue-loading-overlay; this is a slot if you want a custom one -->
+            </slot>
+        </div>
+
+        <!-- Pagination Footer (override-capable) -->
+        <slot name="pagination" :page="internalPage" :pageSize="internalPageSize" :total="safeData.total"
+            :totalPages="totalPages" :goToPage="goToPage"
+            :setPageSize="(n) => { internalPageSize = n; internalPage = 1; updateQuery(); }">
+            <div
+                class="p-3 border rounded-lg bg-white text-sm flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                <span class="mb-2 sm:mb-0">
+                    {{ safeData.total ? (internalPage - 1) * internalPageSize + 1 : 0 }} -
+                    {{ Math.min(internalPage * internalPageSize, safeData.total) }} of
+                    {{ safeData.total }} items
+                </span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <BaseButton :icon="mdiChevronLeft" small :disabled="internalPage === 1"
+                        @click="goToPage(internalPage - 1)" />
+                    <BaseButton v-for="(page, index) in paginationPages" :key="index"
+                        :active="page !== '...' && page === internalPage" :label="page" small :disabled="page === '...'"
+                        @click="page !== '...' && goToPage(page)" />
+                    <BaseButton :icon="mdiChevronRight" small :disabled="internalPage === totalPages"
+                        @click="goToPage(internalPage + 1)" />
+                    <select class="border p-1 text-sm rounded" @change="updatePageSize" :value="internalPageSize">
+                        <option value="5">5 / page</option>
+                        <option value="10">10 / page</option>
+                        <option value="20">20 / page</option>
+                    </select>
+                </div>
+            </div>
+        </slot>
     </div>
 </template>
 
@@ -128,9 +172,9 @@ import {
     mdiChevronRight
 } from '@mdi/js'
 
-// Props
+/* Props */
 const props = defineProps({
-    columns: Array,
+    columns: { type: Array, default: () => [] },
     data: {
         type: Object,
         default: () => ({
@@ -141,27 +185,20 @@ const props = defineProps({
             data: []
         })
     },
-    checkable: Boolean,
-    loading: {
-        type: Boolean,
-        default: false
-    },
-    showAction: {
-        type: Boolean,
-        default: true
-    }
+    checkable: { type: Boolean, default: false },
+    loading: { type: Boolean, default: false },
+    showAction: { type: Boolean, default: true }, // kept for backward-compat with #cell-actions slot
 })
 
-// Emits
+/* Emits */
 const emit = defineEmits(['query-change', 'selected', 'sort', 'filter', 'edit'])
 
-// Reference to table container
+/* Refs */
 const tableContainer = ref(null)
 
-// Set up loading overlay
+/* Loading overlay */
 const $loading = useLoading()
 const loaderInstance = ref(null)
-
 watch(
     () => props.loading,
     (newVal) => {
@@ -184,7 +221,6 @@ watch(
     },
     { immediate: true }
 )
-
 onBeforeUnmount(() => {
     if (loaderInstance.value) {
         loaderInstance.value.hide()
@@ -192,30 +228,17 @@ onBeforeUnmount(() => {
     }
 })
 
-// --- Table Logic ---
+/* State */
 const internalPage = ref(props.data.currentPage || 1)
 const internalPageSize = ref(props.data.pageSize || 10)
-
 const internalSortKey = ref(null)
 const internalSortOrder = ref('desc')
 const internalFilters = ref({})
-
 const showFilters = ref({})
-
 const selectedRows = ref(new Set())
 
-watch(
-    () => props.data.currentPage,
-    (newVal) => {
-        internalPage.value = newVal || 1
-    }
-)
-watch(
-    () => props.data.pageSize,
-    (newVal) => {
-        internalPageSize.value = newVal || 10
-    }
-)
+watch(() => props.data.currentPage, (v) => (internalPage.value = v || 1))
+watch(() => props.data.pageSize, (v) => (internalPageSize.value = v || 10))
 
 const safeData = computed(
     () =>
@@ -228,50 +251,36 @@ const safeData = computed(
         }
 )
 
-// If you plan to support client-side filtering in addition to server-side,
-// you may use the following computed property. (Note that the table rows
-// still use safeData.data, so if filtering is server-side then safeData.data
-// is already filtered.)
-const filteredItems = computed(() => {
-    return safeData.value.data.filter((item) => {
-        return Object.keys(internalFilters.value).every((key) => {
+/* Filtered list is used only for selection 'select all' computation */
+const filteredItems = computed(() =>
+    safeData.value.data.filter((item) =>
+        Object.keys(internalFilters.value).every((key) => {
             if (!internalFilters.value[key]) return true
             return item[key]?.toString().toLowerCase().includes(internalFilters.value[key].toLowerCase())
         })
-    })
-})
+    )
+)
 
 const allSelected = computed(
     () => selectedRows.value.size === filteredItems.value.length && filteredItems.value.length > 0
 )
 
-const totalPages = computed(() => {
-    return safeData.value.totalPages || Math.ceil(safeData.value.total / internalPageSize.value) || 1
-})
+const totalPages = computed(() => safeData.value.totalPages || Math.ceil(safeData.value.total / internalPageSize.value) || 1)
 
 const paginationPages = computed(() => {
     const total = totalPages.value
     const current = internalPage.value
     const delta = 2
     const pages = []
-
     if (total <= 7) {
-        for (let i = 1; i <= total; i++) {
-            pages.push(i)
-        }
+        for (let i = 1; i <= total; i++) pages.push(i)
     } else {
         pages.push(1)
         let left = Math.max(2, current - delta)
         let right = Math.min(total - 1, current + delta)
-        if (left > 2) {
-            pages.push('...')
-        }
-        for (let i = left; i <= right; i++) {
-            pages.push(i)
-        }
-        if (right < total - 1) {
-            pages.push('...')
-        }
+        if (left > 2) pages.push('...')
+        for (let i = left; i <= right; i++) pages.push(i)
+        if (right < total - 1) pages.push('...')
         pages.push(total)
     }
     return pages
@@ -322,51 +331,35 @@ const setFilter = (key, value) => {
 }
 
 const toggleSelectAll = (checked) => {
-    if (checked) {
-        selectedRows.value = new Set(filteredItems.value.map((item) => item.id))
-    } else {
-        selectedRows.value.clear()
-    }
+    if (checked) selectedRows.value = new Set(filteredItems.value.map((item) => item.id))
+    else selectedRows.value.clear()
     emit('selected', Array.from(selectedRows.value))
 }
 
 const toggleSelectRow = (checked, row) => {
-    if (checked) {
-        selectedRows.value.add(row.id)
-    } else {
-        selectedRows.value.delete(row.id)
-    }
+    if (checked) selectedRows.value.add(row.id)
+    else selectedRows.value.delete(row.id)
     emit('selected', Array.from(selectedRows.value))
 }
 
-const editRow = (item) => {
-    emit('edit', item)
-}
+const editRow = (item) => emit('edit', item)
 
-// --- Aggregation Logic ---
-// Compute the aggregates based on the currently displayed data (safeData.data).
+/* Aggregation */
 const aggregates = computed(() => {
     const agg = {}
-    // Loop through each column that has aggregate set to true
     props.columns.forEach((col) => {
         if (col.aggregate) {
             let sum = 0
             safeData.value.data.forEach((item) => {
                 const value = parseFloat(item[col.key])
-                if (!isNaN(value)) {
-                    sum += value
-                }
+                if (!isNaN(value)) sum += value
             })
             agg[col.key] = sum
         }
     })
     return agg
 })
-
-// Determine if at least one column has aggregation enabled.
-const hasAggregates = computed(() => {
-    return props.columns.some((col) => col.aggregate)
-})
+const hasAggregates = computed(() => props.columns.some((col) => col.aggregate))
 </script>
 
 <style scoped>
@@ -390,6 +383,7 @@ td {
     opacity: 0;
 }
 
+/* Mobile responsive cards */
 @media (max-width: 640px) {
     thead {
         display: none;

@@ -58,10 +58,24 @@ const routes = [
     component: () => import("@/views/ClubsOrganizationPage.vue"),
   },
   {
+    meta: { title: "Profile" },
+    path: "/profile/:id?",
+    name: "profile",
+    component: () => import("@/views/ProfilePage.vue"),
+    props: true, // pass :id as prop if present
+  },
+  {
     meta: { title: "Calendar of Activities" },
     path: "/activity-calendar",
     name: "activity-calendar",
     component: () => import("@/views/CalendarActivityPage.vue"),
+  },
+  {
+    meta: { title: "View Club" },
+    path: "/club/:id",
+    name: "club-view",
+    component: () => import("@/views/ClubViewPage.vue"), // 👈 new view
+    props: true,
   },
 
   // ==========================

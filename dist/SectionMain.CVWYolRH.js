@@ -1,1 +1,0 @@
-import{a as e,q as s,J as n,j as o,g as t}from"./index.DopRILyw.js";const r="w-full m-0 p-0",p={__name:"SectionMain",setup(c){return(a,l)=>(s(),e("section",{class:o(["container mx-auto p-4 sm:p-6",t(r)])},[n(a.$slots,"default")],2))}};export{p as _};
