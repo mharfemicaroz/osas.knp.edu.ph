@@ -1,0 +1,1 @@
+import{a,q as s,C as n,j as l,g as o}from"./index.DZp_F5YJ.js";const t="w-full m-0 p-0",p={__name:"SectionMain",setup(r){return(e,c)=>(s(),a("section",{class:l(["w-full h-full m-0 p-0",o(t)])},[n(e.$slots,"default")],2))}};export{p as _};
