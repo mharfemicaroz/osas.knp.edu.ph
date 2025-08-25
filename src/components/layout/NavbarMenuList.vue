@@ -1,3 +1,4 @@
+<!-- src/components/layout/NavbarMenuList.vue -->
 <template>
     <ul>
         <li v-for="(item, index) in menu" :key="index" class="mb-2">
@@ -12,6 +13,6 @@ import NavbarItem from "./NavbarItem.vue";
 defineOptions({ name: "NavbarMenuList" });
 
 defineProps({
-    menu: { type: Array, default: () => [] }
+    menu: { type: Array, default: () => [] },
 });
 </script>

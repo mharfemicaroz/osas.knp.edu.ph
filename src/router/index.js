@@ -3,84 +3,111 @@ import { createWebHashHistory, createRouter } from "vue-router";
 import { authGuard } from "./routeGuard";
 
 const routes = [
-  // ==========================
-  // Auth Routes
-  // ==========================
+  { path: "/", name: "IndexPage", redirect: { name: "dashboard" } },
+
+  // Auth
   {
-    path: "/",
-    name: "IndexPage",
-    redirect: { name: "dashboard" },
-  },
-  {
-    meta: { title: "Login" },
+    meta: { title: "Login", public: true },
     path: "/login",
     name: "login",
     component: () => import("@/auth/SignInPage.vue"),
   },
   {
-    meta: { title: "Register" },
+    meta: { title: "Register", public: true },
     path: "/register",
     name: "register",
     component: () => import("@/auth/RegisterPage.vue"),
   },
   {
-    meta: { title: "Verify" },
+    meta: { title: "Verify", public: true },
     path: "/verify-email",
     name: "verify-email",
     component: () => import("@/auth/VerifyPage.vue"),
   },
   {
-    meta: { title: "Verify Prompt" },
+    meta: { title: "Verify Prompt", public: true },
     path: "/verify-prompt",
     name: "verify-prompt",
     component: () => import("@/auth/VerifyPrompt.vue"),
   },
   {
-    meta: { title: "Verifying…" },
+    meta: { title: "Verifying…", public: true },
     path: "/verifying-now",
     name: "verifying-now",
     component: () => import("@/auth/VerifyingNow.vue"),
   },
 
-  // ==========================
-  // Dashboard
-  // ==========================
+  // Dashboards
   {
-    meta: { title: "Dashboard" },
+    meta: { title: "Dashboard", requiresAuth: true, roles: ["admin"] },
     path: "/dashboard",
     name: "dashboard",
     component: () => import("@/views/IndexPage.vue"),
   },
   {
-    meta: { title: "Clubs & Organizations" },
+    meta: {
+      title: "Student Dashboard",
+      requiresAuth: true,
+      roles: ["student"],
+    },
+    path: "/student-dashboard",
+    name: "student-dashboard",
+    component: () => import("@/views/StudentDashboardPage.vue"),
+  },
+
+  // App Pages
+  {
+    meta: {
+      title: "Clubs & Organizations",
+      requiresAuth: true,
+      roles: ["admin", "student_officer"],
+    },
     path: "/clubs-organization",
     name: "clubs-organization",
     component: () => import("@/views/ClubsOrganizationPage.vue"),
   },
   {
-    meta: { title: "Profile" },
+    meta: { title: "Profile", requiresAuth: true },
     path: "/profile/:id?",
     name: "profile",
     component: () => import("@/views/ProfilePage.vue"),
-    props: true, // pass :id as prop if present
+    props: true,
   },
   {
-    meta: { title: "Calendar of Activities" },
+    meta: { title: "Calendar of Activities", requiresAuth: true },
     path: "/activity-calendar",
     name: "activity-calendar",
     component: () => import("@/views/CalendarActivityPage.vue"),
   },
   {
-    meta: { title: "View Club" },
+    meta: { title: "View Club", requiresAuth: true },
     path: "/club/:id",
     name: "club-view",
-    component: () => import("@/views/ClubViewPage.vue"), // 👈 new view
+    component: () => import("@/views/ClubViewPage.vue"),
     props: true,
   },
+  {
+    meta: {
+      title: "Activity Designs",
+      requiresAuth: true,
+      roles: ["admin", "student_officer"],
+    },
+    path: "/activity-designs",
+    name: "activity-designs",
+    component: () => import("@/views/ActivityDesignsPage.vue"),
+  },
+  {
+    meta: {
+      title: "Utilization Requests",
+      requiresAuth: true,
+      roles: ["admin", "student_officer"],
+    },
+    path: "/utilization-requests",
+    name: "utilization-requests",
+    component: () => import("@/views/UtilizationRequestsPage.vue"),
+  },
 
-  // ==========================
-  // 404 / Not Found
-  // ==========================
+  // 404
   {
     path: "/:pathMatch(.*)*",
     name: "NotFound",

@@ -98,4 +98,11 @@ export default {
     const { data } = await axiosInstance.get(`/users/${id}/clubs`);
     return Array.isArray(data?.clubs) ? data.clubs : [];
   },
+
+  async getClubInfo(userId, clubId) {
+    const { data } = await axiosInstance.get(
+      `/users/${userId}/clubs/${clubId}`
+    );
+    return data;
+  },
 };

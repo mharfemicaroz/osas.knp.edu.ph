@@ -123,6 +123,11 @@ export default {
     return response.data;
   },
 
+  async checkRole() {
+    const response = await axiosInstance.get(`${API_URL}/check-role`);
+    return response.data;
+  },
+
   getGoogleStartUrl(redirectUri) {
     return `${
       axiosInstance.defaults.baseURL || ""

@@ -85,7 +85,7 @@ export const useAuthStore = defineStore("auth", () => {
       console.log("user", user.value);
       localStorage.setItem("userData", JSON.stringify(user.value));
 
-      router.push("/dashboard");
+      router.push("/profile");
       return { ok: true };
     } catch (e) {
       throw new Error(e.response?.data?.message || "Login failed");
@@ -123,7 +123,7 @@ export const useAuthStore = defineStore("auth", () => {
       localStorage.removeItem("requires2FA");
       localStorage.removeItem("tempToken");
 
-      router.push("/dashboard");
+      router.push("/profile");
     } catch (error) {
       throw new Error("Invalid OTP");
     } finally {
@@ -262,8 +262,37 @@ export const useAuthStore = defineStore("auth", () => {
       }
     }
 
-    router.push("/dashboard");
+    router.push("/profile");
     return true;
+  };
+
+  const checkRole = async () => {
+    try {
+      isLoading.value = true;
+      const data = await apiAuth.checkRole();
+      if (data?.userdata) {
+        user.value = {
+          id: data.userdata.id,
+          email: data.userdata.email,
+          role: data.userdata.role,
+          twoFAEnabled: data.userdata.twoFAEnabled,
+          first_name: data.userdata.first_name,
+          last_name: data.userdata.last_name,
+          username: data.userdata.username,
+          is_active: data.userdata.is_active,
+        };
+        localStorage.setItem("userData", JSON.stringify(user.value));
+      } else if (data?.role && user.value) {
+        user.value = { ...user.value, role: data.role };
+        localStorage.setItem("userData", JSON.stringify(user.value));
+      }
+      return data?.role || user.value?.role || null;
+    } catch (e) {
+      if (e?.response?.status === 401) logout();
+      throw new Error(e.response?.data?.message || "Failed to check role");
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   window.addEventListener("storage", (event) => {
@@ -292,5 +321,6 @@ export const useAuthStore = defineStore("auth", () => {
     consumeSsoFromHash,
     getCaptchaToken: apiAuth.getCaptchaToken,
     isAuthenticated: () => !!token.value,
+    checkRole,
   };
 });

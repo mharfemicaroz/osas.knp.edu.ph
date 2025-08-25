@@ -16,6 +16,7 @@ import ClubMembersModal from '@/components/clubs/ClubMembersModal.vue'
 import ClubDocsModal from '@/components/clubs/ClubDocsModal.vue'
 import ClubRowActions from '@/components/clubs/ClubRowActions.vue'
 
+import { useAuthStore } from '@/stores/auth'
 import { useClubStore } from '@/stores/club'
 
 import {
@@ -24,14 +25,18 @@ import {
     mdiPlus,
 } from '@mdi/js'
 
+const authStore = useAuthStore()
 const clubStore = useClubStore()
 
 /* list state */
 const lastQuery = ref({ page: 1, limit: 10 })
 const fetchClubs = async (queryParams = {}, force = true) => {
-    lastQuery.value = { ...lastQuery.value, ...queryParams }
-    await clubStore.fetchAll(lastQuery.value, force)
-}
+    lastQuery.value = { ...lastQuery.value, ...queryParams };
+    if (typeof lastQuery.value.officer === "undefined") {
+        lastQuery.value.officer = true; // default ON
+    }
+    await clubStore.fetchAll(lastQuery.value, force);
+};
 onMounted(() => fetchClubs({ page: 1, limit: 10 }))
 
 const clubsData = computed(() => ({
@@ -150,7 +155,8 @@ const handleQueryChange = async (query) => {
 
             <SectionTitleLineWithButton :icon="mdiTableBorder" title="Clubs" main>
                 <div class="flex items-center gap-2">
-                    <BaseButton :icon="mdiPlus" color="primary" label="Add Club" @click="openCreate" />
+                    <BaseButton v-if="authStore.user.role === 'admin'" :icon="mdiPlus" color="primary" label="Add Club"
+                        @click="openCreate" />
                     <BaseButton color="info" label="Refresh"
                         @click="fetchClubs({ page: 1, limit: clubsData.pageSize })" />
                 </div>

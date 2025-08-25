@@ -1,3 +1,4 @@
+// src/stores/user.js
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import userService from "../services/user/userService";
@@ -17,9 +18,13 @@ export const useUserStore = defineStore("user", () => {
   const isLoaded = ref(false);
   const selectedUser = ref(null);
 
-  // NEW: cache clubs per user and currently selected user's clubs
+  // Cache clubs per user and currently selected user's clubs
   const clubsByUser = ref({}); // { [userId]: Club[] }
-  const selectedUserClubs = ref([]); // convenience for UI
+  const selectedUserClubs = ref([]);
+
+  // NEW: per-user-per-club cache + currently selected club
+  const clubInfoCache = ref({}); // { "userId:clubId": { userId, clubId, membership, club } }
+  const selectedUserClub = ref(null);
 
   // --- INTERNAL HELPERS ---
   const upsertInList = (user) => {
@@ -32,11 +37,9 @@ export const useUserStore = defineStore("user", () => {
   const fetchAll = async (queryParams = {}, forceRefresh = false) => {
     error.value = null;
     if (!forceRefresh && isLoaded.value) return;
-
     try {
       isLoading.value = true;
       const response = await userService.list(queryParams);
-
       Object.assign(users.value, {
         total: response.total || 0,
         totalPages: response.totalPages || 1,
@@ -44,7 +47,6 @@ export const useUserStore = defineStore("user", () => {
         pageSize: queryParams.limit || 10,
         data: response.data || [],
       });
-
       isLoaded.value = true;
     } catch (err) {
       error.value =
@@ -117,7 +119,6 @@ export const useUserStore = defineStore("user", () => {
     }
   };
 
-  // NEW: upload avatar
   const uploadAvatar = async (id, fileOrData) => {
     error.value = null;
     try {
@@ -137,7 +138,6 @@ export const useUserStore = defineStore("user", () => {
     }
   };
 
-  // NEW: upload cover
   const uploadCover = async (id, fileOrData) => {
     error.value = null;
     try {
@@ -157,7 +157,6 @@ export const useUserStore = defineStore("user", () => {
     }
   };
 
-  // NEW: change password (no state changes)
   const changePassword = async ({ old_password, new_password }) => {
     error.value = null;
     try {
@@ -174,39 +173,18 @@ export const useUserStore = defineStore("user", () => {
     }
   };
 
-  const resetStore = () => {
-    users.value = {
-      total: 0,
-      totalPages: 1,
-      currentPage: 1,
-      pageSize: 10,
-      data: [],
-    };
-    selectedUser.value = null;
-    isLoaded.value = false;
-    isLoading.value = false;
-    error.value = null;
-  };
-
   const fetchUserClubs = async (userId, { force = false } = {}) => {
     error.value = null;
     try {
       const key = String(userId);
-
-      // Serve cache unless forced
       if (!force && Array.isArray(clubsByUser.value[key])) {
-        selectedUserClubs.value = clubsByUser.value[key]; // <-- ensure UI gets data
+        selectedUserClubs.value = clubsByUser.value[key];
         return clubsByUser.value[key];
       }
-
       isLoading.value = true;
       const clubs = await userService.getClubs(userId);
-
       clubsByUser.value[key] = clubs;
-
-      // Always reflect the latest fetched clubs in the UI
       selectedUserClubs.value = clubs;
-
       return clubs;
     } catch (err) {
       error.value =
@@ -219,12 +197,55 @@ export const useUserStore = defineStore("user", () => {
     }
   };
 
+  // NEW: fetch a single club membership/info for a user (with caching)
+  const fetchUserClub = async (userId, clubId, { force = false } = {}) => {
+    error.value = null;
+    const cacheKey = `${userId}:${clubId}`;
+    try {
+      if (!force && clubInfoCache.value[cacheKey]) {
+        selectedUserClub.value = clubInfoCache.value[cacheKey];
+        return clubInfoCache.value[cacheKey];
+      }
+      isLoading.value = true;
+      const info = await userService.getClubInfo(userId, clubId);
+      clubInfoCache.value[cacheKey] = info; // { userId, clubId, membership, club }
+      selectedUserClub.value = info;
+      return info;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to fetch user's club info";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const resetStore = () => {
+    users.value = {
+      total: 0,
+      totalPages: 1,
+      currentPage: 1,
+      pageSize: 10,
+      data: [],
+    };
+    selectedUser.value = null;
+    selectedUserClubs.value = [];
+    clubInfoCache.value = {};
+    selectedUserClub.value = null;
+    isLoaded.value = false;
+    isLoading.value = false;
+    error.value = null;
+  };
+
   return {
     // state
     users,
     selectedUser,
-    selectedUserClubs, // NEW
-    clubsByUser, // NEW
+    selectedUserClubs,
+    clubsByUser,
+    selectedUserClub, // NEW
     isLoading,
     error,
     isLoaded,
@@ -235,10 +256,11 @@ export const useUserStore = defineStore("user", () => {
     create,
     updateById,
     deleteById,
-    uploadAvatar, // NEW
-    uploadCover, // NEW
-    changePassword, // NEW
+    uploadAvatar,
+    uploadCover,
+    changePassword,
     fetchUserClubs,
+    fetchUserClub, // NEW
     resetStore,
   };
 });

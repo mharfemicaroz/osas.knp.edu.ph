@@ -1,3 +1,4 @@
+<!-- src/layouts/LayoutAuthenticated.vue -->
 <template>
     <div id="wrapper" class="min-h-screen flex flex-col m-0 p-0">
         <div v-if="loading" class="fixed inset-0 bg-white/80 flex justify-center items-center z-50 m-0 p-0">
@@ -23,7 +24,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
 import AppHeader from "@/components/layout/AppHeader.vue";
@@ -33,7 +33,6 @@ import AppFooter from "@/components/layout/AppFooter.vue";
 import ToasterComponent from "@/components/ToasterComponent.vue";
 
 const authStore = useAuthStore();
-const route = useRoute();
 
 const loading = ref(false);
 const showSidebar = ref(true);
@@ -56,9 +55,7 @@ const doLogout = async () => {
     }
 };
 
-const handleLogout = () => {
-    return doLogout();
-};
+const handleLogout = () => doLogout();
 
 const toggleSidebar = () => {
     showSidebar.value = !showSidebar.value;
