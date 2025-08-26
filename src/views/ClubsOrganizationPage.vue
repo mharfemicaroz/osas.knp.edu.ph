@@ -15,6 +15,7 @@ import ClubFormModal from '@/components/clubs/ClubFormModal.vue'
 import ClubMembersModal from '@/components/clubs/ClubMembersModal.vue'
 import ClubDocsModal from '@/components/clubs/ClubDocsModal.vue'
 import ClubRowActions from '@/components/clubs/ClubRowActions.vue'
+import ClubAttachmentsModal from '../components/clubs/ClubAttachmentsModal.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useClubStore } from '@/stores/club'
@@ -24,6 +25,7 @@ import {
     mdiAlertCircle,
     mdiPlus,
 } from '@mdi/js'
+
 
 const authStore = useAuthStore()
 const clubStore = useClubStore()
@@ -46,6 +48,15 @@ const clubsData = computed(() => ({
     pageSize: clubStore.clubs.pageSize || 10,
     data: clubStore.clubs.data || [],
 }))
+
+/* attachments */
+const attachVisible = ref(false)
+const attachRow = ref(null)
+const openAttachments = async (row) => {
+    await clubStore.fetchById(row.id)
+    attachRow.value = clubStore.selectedClub || row
+    attachVisible.value = true
+}
 
 /* create / edit club */
 const createVisible = ref(false)
@@ -174,7 +185,7 @@ const handleQueryChange = async (query) => {
 
                 <template #cell-actions="{ row }">
                     <ClubRowActions :row="row" @view="viewClub" @members="viewMembers" @docs="viewDocs" @edit="openEdit"
-                        @delete="confirmDelete" />
+                        @delete="confirmDelete" @attachments="openAttachments" />
                 </template>
             </BaseTable>
 
@@ -190,4 +201,6 @@ const handleQueryChange = async (query) => {
 
     <!-- Docs -->
     <ClubDocsModal v-model="docsVisible" :club-id="selectedClubId" :club-name="selectedClubName" />
+
+    <ClubAttachmentsModal v-model="attachVisible" :row="attachRow" />
 </template>

@@ -1,4 +1,4 @@
-import{r as Dt,B as Ms,C as Xt,D as ks,o as Ss,c as ws,a as Os,q as As,e as Ps}from"./index.B-Q-J4WK.js";/*!
+import{r as Dt,B as Ms,C as Xt,D as ks,o as Ss,c as ws,a as Os,q as As,e as Ps}from"./index.lmxhTYcw.js";/*!
  * @kurkle/color v0.3.4
  * https://github.com/kurkle/color#readme
  * (c) 2024 Jukka Kurkela

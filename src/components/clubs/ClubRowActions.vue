@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import IconifyButton from '@/components/commons/IconifyButton.vue'
 import {
+    mdiPaperclip,
     mdiAccountMultiple,
     mdiFileDocument,
     mdiPencil,
@@ -13,7 +14,7 @@ import {
 const props = defineProps({
     row: { type: Object, required: true },
 })
-const emit = defineEmits(['members', 'docs', 'edit', 'delete', 'view']) // 👈 added "view"
+const emit = defineEmits(['members', 'docs', 'edit', 'delete', 'view', 'attachments']) // 👈 added "view"
 
 const open = ref(false)
 const menuRef = ref(null)
@@ -36,6 +37,8 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="flex items-center gap-1 md:gap-2">
+        <IconifyButton :icon-path="mdiPaperclip" color="text-indigo-600" label="Attachments" tooltip="Attachments"
+            size="sm" @click="$emit('attachments', row)" />
         <!-- new "View" action -->
         <IconifyButton :icon-path="mdiEye" color="text-gray-700" label="View" tooltip="View Club" size="sm"
             @click="$emit('view', row)" />
@@ -52,6 +55,7 @@ onBeforeUnmount(() => {
 
         <!-- dropdown menu -->
         <div class="relative md:hidden" ref="btnRef">
+
             <button
                 class="inline-flex items-center justify-center rounded-xl p-1.5 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-1"
                 :aria-expanded="open" aria-haspopup="menu" title="More" @click="open = !open">
@@ -62,6 +66,10 @@ onBeforeUnmount(() => {
 
             <div v-if="open" ref="menuRef" role="menu"
                 class="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-xl border bg-white shadow-lg">
+                <button role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                    @click="open = false; $emit('attachments', row)">
+                    Attachments
+                </button>
                 <button role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                     @click="open = false; $emit('view', row)">
                     View Club

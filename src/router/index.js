@@ -106,6 +106,16 @@ const routes = [
     name: "utilization-requests",
     component: () => import("@/views/UtilizationRequestsPage.vue"),
   },
+  {
+    meta: {
+      title: "Liquidation Funds",
+      requiresAuth: true,
+      roles: ["admin", "student_officer"],
+    },
+    path: "/liquidation-funds",
+    name: "liquidation-funds",
+    component: () => import("@/views/LiquidationFundsPage.vue"),
+  },
 
   // 404
   {

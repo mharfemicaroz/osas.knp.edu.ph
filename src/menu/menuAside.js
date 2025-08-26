@@ -49,7 +49,7 @@ const ADMIN_MENU = [
     roles: ["admin", "student_officer"],
   },
   {
-    to: "/liquidation-form",
+    to: "/liquidation-funds",
     icon: mdiCashCheck,
     label: "Liquidation Form",
     roles: ["admin", "student_officer"],

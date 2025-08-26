@@ -259,6 +259,46 @@ export const useClubStore = defineStore("club", () => {
     }
   }
 
+  const uploadAttachment = async (id, fileOrData) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      const res = await clubService.uploadAttachment(id, fileOrData);
+      upsertInList(res);
+      if (selectedClub.value?.id === id) selectedClub.value = res;
+      return res;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.response?.message ||
+        err?.message ||
+        "Failed to upload attachment";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const deleteAttachment = async (id, attachmentId) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      const res = await clubService.deleteAttachment(id, attachmentId);
+      upsertInList(res);
+      if (selectedClub.value?.id === id) selectedClub.value = res;
+      return res;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.response?.message ||
+        err?.message ||
+        "Failed to delete attachment";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const resetStore = () => {
     clubs.value = {
       total: 0,
@@ -290,6 +330,9 @@ export const useClubStore = defineStore("club", () => {
     removeUserFromClub,
     updateMemberRole,
     updateMemberStatus,
+
+    uploadAttachment,
+    deleteAttachment,
 
     resetStore,
   };

@@ -27,6 +27,12 @@ function buildListParams(queryParams = {}) {
   return params;
 }
 
+function isBlobLike(v) {
+  return (
+    typeof Blob !== "undefined" && (v instanceof Blob || v instanceof File)
+  );
+}
+
 export default {
   async create(data) {
     const { data: res } = await axiosInstance.post(`/clubs`, data);
@@ -84,5 +90,31 @@ export default {
       payload
     );
     return res?.data; // membership row { user_id, club_id, role?, status?, joined_at, ... }
+  },
+
+  async uploadAttachment(id, fileOrData) {
+    if (isBlobLike(fileOrData)) {
+      const fd = new FormData();
+      fd.append("file", fileOrData);
+      const { data: res } = await axiosInstance.post(
+        `/clubs/${id}/attachments`,
+        fd,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      return res;
+    } else {
+      const { data: res } = await axiosInstance.post(
+        `/clubs/${id}/attachments`,
+        { file: fileOrData }
+      );
+      return res;
+    }
+  },
+
+  async deleteAttachment(id, attachmentId) {
+    const { data: res } = await axiosInstance.delete(
+      `/clubs/${id}/attachments/${attachmentId}`
+    );
+    return res;
   },
 };

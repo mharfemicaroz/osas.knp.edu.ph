@@ -20,6 +20,7 @@ import ActivityRowActions from '@/components/activity/ActivityRowActions.vue'
 /* Utilization-specific modals */
 import UtilizationRequestFormModal from '@/components/utilization/UtilizationRequestFormModal.vue'
 import UtilizationAttachmentsModal from '@/components/utilization/UtilizationAttachmentsModal.vue'
+import CalendarViewModal from '@/components/utilization/CalendarViewModal.vue'
 
 import { printUtilizationRequestPdf } from '@/utils/printUtilizationRequest'
 
@@ -38,6 +39,32 @@ import {
 
 const store = useUtilizationRequestStore()
 const authStore = useAuthStore()
+
+const calendarVisible = ref(false)
+const openCalendar = () => { calendarVisible.value = true }
+
+const openFromCalendar = async (id) => {
+    try {
+        await store.fetchById(id)
+        const r = store.selected
+        if (r) {
+            // Open the view/edit modal (same pattern as elsewhere)
+            await openEdit(r)
+        }
+    } catch (e) {
+        console.error(e)
+    } finally {
+        calendarVisible.value = false
+    }
+}
+
+const resetAvailability = () => {
+    avStartDate.value = ''
+    avStartTime.value = '08:00'
+    avEndDate.value = ''
+    avEndTime.value = '10:00'
+    avFacilities.value = []
+}
 
 /* Predefined facilities (authoritative list) */
 const FACILITY_OPTIONS = [
@@ -473,6 +500,8 @@ const resetFilters = async () => {
 
             <SectionTitleLineWithButton :icon="mdiTableBorder" title="Utilization Requests" main>
                 <div class="flex items-center gap-2">
+                    <BaseButton :icon="mdiCalendarClock" color="info" label="View Calendar" @click="openCalendar" />
+
                     <BaseButton :icon="mdiPlus" color="primary" label="New Request" @click="openCreate" />
                     <BaseButton :icon="mdiRefresh" color="info" label="Refresh" @click="fetchAll({}, true)" />
                 </div>
@@ -628,4 +657,5 @@ const resetFilters = async () => {
     <UtilizationRequestFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}"
         @submit="onEditSubmit" />
     <UtilizationAttachmentsModal v-model="attachVisible" :row="attachRow" />
+    <CalendarViewModal v-model="calendarVisible" @open="openFromCalendar" />
 </template>
