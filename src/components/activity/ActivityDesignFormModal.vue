@@ -209,8 +209,11 @@ watch(
         if (ap.school_year) form.value.school_year = ap.school_year
         if (Number.isFinite(item.funds)) form.value.proposed_budget = item.funds
 
+        form.value.venue = planItems.value[0].raw.venue
+        form.value.date_of_implementation = planItems.value[0].raw.date_of_implementation
         // ensure school year is set (in case AP has no SY)
         form.value.school_year = ap.school_year || form.value.school_year
+
 
         // ensure club stays locked to AP
         form.value.club_id = ap.club_id
@@ -226,6 +229,9 @@ const resetAnnualLink = () => {
     form.value.annual_plan_id = ''
     form.value.annual_plan_item = null
     selectedPlanItemKey.value = ''
+
+    form.value.venue = null
+    form.value.date_of_implementation = null
 
     // restore user's baseline values if we have them
     if (baselineBeforeLink.value) {

@@ -579,8 +579,17 @@ const anyLoading = computed(() =>
                         <option v-for="s in SEMESTERS" :key="s" :value="s">{{ s }}</option>
                     </select>
 
-                    <input v-model="filters.office_department" placeholder="Office / Department"
-                        class="border rounded px-2 py-2" />
+                    <!-- <input v-model="filters.office_department" placeholder="Office / Department"
+                        class="border rounded px-2 py-2" /> -->
+
+                    <select v-model="filters.office_department" class="border rounded px-2 py-2">
+                        <option value="">All Clubs</option>
+                        <option v-for="c in (clubStore.clubs.data || [])" :key="c.name" :value="c.name">
+                            {{ c.name }}
+                        </option>
+                    </select>
+
+
                     <select v-model="filters.nature_of_activity" class="border rounded px-2 py-2">
                         <option value="">All Natures</option>
                         <option>Curricular</option>
