@@ -1,9 +1,9 @@
-// src/stores/activityDesign.js
+// src/stores/annualPlan.js
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import activityDesignService from "../services/activity/activityDesignService";
+import annualPlanService from "../services/plan/annualPlanService";
 
-export const useActivityDesignStore = defineStore("activityDesign", () => {
+export const useAnnualPlanStore = defineStore("annualPlan", () => {
   const items = ref({
     total: 0,
     totalPages: 1,
@@ -28,7 +28,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     if (!forceRefresh && isLoaded.value) return;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.list(queryParams);
+      const res = await annualPlanService.list(queryParams);
       Object.assign(items.value, {
         total: res.total || 0,
         totalPages: res.totalPages || 1,
@@ -42,7 +42,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to fetch activity designs";
+        "Failed to fetch annual plans";
     } finally {
       isLoading.value = false;
     }
@@ -52,7 +52,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.getById(id);
+      const res = await annualPlanService.getById(id);
       selected.value = res;
       upsertInList(res);
     } catch (err) {
@@ -60,7 +60,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to fetch activity design";
+        "Failed to fetch annual plan";
     } finally {
       isLoading.value = false;
     }
@@ -70,16 +70,16 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.create(data);
+      const res = await annualPlanService.create(data);
       items.value.data.push(res);
       items.value.total += 1;
-      return res; // return created for convenience
+      return res;
     } catch (err) {
       error.value =
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to create activity design";
+        "Failed to create annual plan";
       throw err;
     } finally {
       isLoading.value = false;
@@ -90,7 +90,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.updateById(id, data);
+      const res = await annualPlanService.updateById(id, data);
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -99,7 +99,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to update activity design";
+        "Failed to update annual plan";
       throw err;
     } finally {
       isLoading.value = false;
@@ -110,7 +110,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      await activityDesignService.delete(id);
+      await annualPlanService.delete(id);
       items.value.data = items.value.data.filter((r) => r.id !== id);
       items.value.total = Math.max(0, items.value.total - 1);
       if (selected.value?.id === id) selected.value = null;
@@ -119,7 +119,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to delete activity design";
+        "Failed to delete annual plan";
     } finally {
       isLoading.value = false;
     }
@@ -129,7 +129,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.submit(id);
+      const res = await annualPlanService.submit(id);
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -138,7 +138,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to submit activity design";
+        "Failed to submit annual plan";
       throw err;
     } finally {
       isLoading.value = false;
@@ -149,7 +149,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.approve(id, { remarks });
+      const res = await annualPlanService.approve(id, { remarks });
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -158,7 +158,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to approve activity design";
+        "Failed to approve annual plan";
       throw err;
     } finally {
       isLoading.value = false;
@@ -169,7 +169,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.reject(id, { remarks });
+      const res = await annualPlanService.reject(id, { remarks });
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -178,7 +178,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to reject activity design";
+        "Failed to reject annual plan";
       throw err;
     } finally {
       isLoading.value = false;
@@ -189,7 +189,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.cancel(id, { remarks });
+      const res = await annualPlanService.cancel(id, { remarks });
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -198,7 +198,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
         err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
-        "Failed to cancel activity design";
+        "Failed to cancel annual plan";
       throw err;
     } finally {
       isLoading.value = false;
@@ -209,7 +209,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.uploadAttachment(id, fileOrData);
+      const res = await annualPlanService.uploadAttachment(id, fileOrData);
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -229,10 +229,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.deleteAttachment(
-        id,
-        attachmentId
-      );
+      const res = await annualPlanService.deleteAttachment(id, attachmentId);
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;

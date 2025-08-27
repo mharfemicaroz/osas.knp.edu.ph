@@ -3,11 +3,11 @@ import {
   mdiMonitorDashboard,
   mdiCalendar,
   mdiPencil,
-  mdiFileDocument,
   mdiCashCheck,
   mdiCommentAlert,
   mdiAccountGroup,
   mdiAccountCircle,
+  mdiFileDocument,
 } from "@mdi/js";
 
 /** Admin base menu (roles metadata) */
@@ -25,16 +25,22 @@ const ADMIN_MENU = [
     roles: ["admin", "student", "student_officer"],
   },
   {
-    to: "/clubs-organization",
-    icon: mdiAccountGroup,
-    label: "Clubs/Organization",
-    roles: ["admin", "student_officer"], // allow student officers
-  },
-  {
     to: "/activity-calendar",
     icon: mdiCalendar,
     label: "Activity Calendar",
     roles: ["admin", "student", "student_officer"],
+  },
+  {
+    to: "/annual-plans",
+    icon: mdiFileDocument,
+    label: "Annual Plans",
+    roles: ["admin", "student_officer"],
+  },
+  {
+    to: "/clubs-organization",
+    icon: mdiAccountGroup,
+    label: "Clubs/Organizations",
+    roles: ["admin", "student_officer"], // allow student officers
   },
   {
     to: "/activity-designs",
@@ -45,21 +51,21 @@ const ADMIN_MENU = [
   {
     to: "/utilization-requests",
     icon: mdiFileDocument,
-    label: "Utilization Request",
+    label: "Utilization Requests",
     roles: ["admin", "student_officer"],
   },
   {
     to: "/liquidation-funds",
     icon: mdiCashCheck,
-    label: "Liquidation Form",
+    label: "Liquidation Forms",
     roles: ["admin", "student_officer"],
   },
-  {
-    to: "/lobby-complains",
-    icon: mdiCommentAlert,
-    label: "Lobby Complains",
-    roles: ["admin", "student", "student_officer"],
-  },
+  // {
+  //   to: "/lobby-complains",
+  //   icon: mdiCommentAlert,
+  //   label: "Lobby Complains",
+  //   roles: ["admin", "student", "student_officer"],
+  // },
 ];
 
 export const buildMenu = (role = "admin") => {

@@ -116,6 +116,26 @@ const routes = [
     name: "liquidation-funds",
     component: () => import("@/views/LiquidationFundsPage.vue"),
   },
+  {
+    meta: {
+      title: "Annual Plans",
+      requiresAuth: true,
+      roles: ["admin", "student_officer"],
+    },
+    path: "/annual-plans",
+    name: "annual-plans",
+    component: () => import("@/views/AnnualPlansPage.vue"),
+  },
+  {
+    meta: {
+      title: "Lobby Complains",
+      requiresAuth: true,
+      roles: ["admin", "student", "student_officer"],
+    },
+    path: "/lobby-complains",
+    name: "lobby-complains",
+    component: () => import("@/views/LobbyComplainsRedirect.vue"),
+  },
 
   // 404
   {

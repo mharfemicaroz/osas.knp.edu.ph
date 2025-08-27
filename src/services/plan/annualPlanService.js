@@ -1,4 +1,4 @@
-// src/services/activity/activityDesignService.js
+// src/services/plan/annualPlanService.js
 import axiosInstance from "../../plugins/axiosConfig";
 
 function buildListParams(queryParams = {}) {
@@ -10,16 +10,10 @@ function buildListParams(queryParams = {}) {
     order,
     q,
     status,
-    semester,
     school_year,
     club_id,
     filed_by_user_id,
-    nature_of_activity,
-    date_filed_from,
-    date_filed_to,
-    impl_from,
-    impl_to,
-    annual_plan_id, // NEW
+    approver_user_id,
     ...rest
   } = queryParams;
 
@@ -30,16 +24,10 @@ function buildListParams(queryParams = {}) {
     order,
     q,
     status,
-    semester,
     school_year,
     club_id,
     filed_by_user_id,
-    nature_of_activity,
-    date_filed_from,
-    date_filed_to,
-    impl_from,
-    impl_to,
-    annual_plan_id, // NEW
+    approver_user_id,
     ...rest,
     filters: { ...filters },
   };
@@ -56,77 +44,65 @@ function isBlobLike(v) {
   );
 }
 
-/* --- Annual Plan helpers (snapshot serialization) --- */
-function toJSONText(v) {
+function toJSONText(v, fallbackEmptyArray = true) {
   if (typeof v === "string") return v;
-  if (v == null) return null;
+  if (v == null) return fallbackEmptyArray ? "[]" : "null";
   try {
     return JSON.stringify(v);
   } catch {
-    return null;
+    return fallbackEmptyArray ? "[]" : "null";
   }
 }
 
 function serializePayload(p = {}) {
   const out = { ...p };
-
-  // Allow unlinking when UI sends empty string
-  if (out.annual_plan_id === "") out.annual_plan_id = null;
-
-  // Stringify snapshot if provided as object/array
-  if (out.annual_plan_item !== undefined) {
-    out.annual_plan_item = toJSONText(out.annual_plan_item);
-  }
-
+  if (out.plans !== undefined) out.plans = toJSONText(out.plans, true);
   return out;
 }
 
 export default {
   async create(data) {
     const { data: res } = await axiosInstance.post(
-      `/activity-designs`,
+      "/annual-plans",
       serializePayload(data)
     );
     return res;
   },
 
   async getById(id) {
-    const { data: res } = await axiosInstance.get(`/activity-designs/${id}`);
+    const { data: res } = await axiosInstance.get(`/annual-plans/${id}`);
     return res;
   },
 
   async updateById(id, data) {
     const { data: res } = await axiosInstance.put(
-      `/activity-designs/${id}`,
+      `/annual-plans/${id}`,
       serializePayload(data)
     );
     return res;
   },
 
   async delete(id) {
-    const { data: res } = await axiosInstance.delete(`/activity-designs/${id}`);
+    const { data: res } = await axiosInstance.delete(`/annual-plans/${id}`);
     return res;
   },
 
   async list(queryParams = {}) {
-    // default officer=false unless caller sets it
     const params = { officer: false, ...buildListParams(queryParams) };
-    const { data: res } = await axiosInstance.get("/activity-designs", {
-      params,
-    });
+    const { data: res } = await axiosInstance.get(`/annual-plans`, { params });
     return res;
   },
 
   async submit(id) {
     const { data: res } = await axiosInstance.post(
-      `/activity-designs/${id}/submit`
+      `/annual-plans/${id}/submit`
     );
     return res;
   },
 
   async approve(id, { remarks } = {}) {
     const { data: res } = await axiosInstance.post(
-      `/activity-designs/${id}/approve`,
+      `/annual-plans/${id}/approve`,
       { remarks }
     );
     return res;
@@ -134,7 +110,7 @@ export default {
 
   async reject(id, { remarks } = {}) {
     const { data: res } = await axiosInstance.post(
-      `/activity-designs/${id}/reject`,
+      `/annual-plans/${id}/reject`,
       { remarks }
     );
     return res;
@@ -142,7 +118,7 @@ export default {
 
   async cancel(id, { remarks } = {}) {
     const { data: res } = await axiosInstance.post(
-      `/activity-designs/${id}/cancel`,
+      `/annual-plans/${id}/cancel`,
       { remarks }
     );
     return res;
@@ -153,15 +129,19 @@ export default {
       const fd = new FormData();
       fd.append("file", fileOrData);
       const { data: res } = await axiosInstance.post(
-        `/activity-designs/${id}/attachments`,
+        `/annual-plans/${id}/attachments`,
         fd,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
       );
       return res;
     } else {
       const { data: res } = await axiosInstance.post(
-        `/activity-designs/${id}/attachments`,
-        { file: fileOrData }
+        `/annual-plans/${id}/attachments`,
+        {
+          file: fileOrData,
+        }
       );
       return res;
     }
@@ -169,7 +149,7 @@ export default {
 
   async deleteAttachment(id, attachmentId) {
     const { data: res } = await axiosInstance.delete(
-      `/activity-designs/${id}/attachments/${attachmentId}`
+      `/annual-plans/${id}/attachments/${attachmentId}`
     );
     return res;
   },

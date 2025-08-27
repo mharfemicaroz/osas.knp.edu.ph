@@ -109,15 +109,11 @@ const schoolYearOptions = computed(() => {
 
 /* ---------- DATA FETCH ---------- */
 const fetchAll = async (patch = {}, force = true) => {
-    // merge incoming changes
     lastQuery.value = { ...lastQuery.value, ...patch }
-
-    // default officer=true if not explicitly set
     if (typeof lastQuery.value.officer === 'undefined') {
         lastQuery.value.officer = true
     }
 
-    // build params and remove empty/nulls
     const params = { ...lastQuery.value }
         ;[
             'q', 'status', 'nature_of_activity', 'school_year', 'semester',
@@ -127,12 +123,9 @@ const fetchAll = async (patch = {}, force = true) => {
             if (params[k] === '' || params[k] == null) delete params[k]
         })
 
-    // ensure officer flag is included
     params.officer = lastQuery.value.officer
-
     await store.fetchAll(params, force)
 }
-
 
 onMounted(async () => {
     await Promise.all([
@@ -144,14 +137,10 @@ onMounted(async () => {
 
 /* ---------- CLUB → FILED-BY DEPENDENCY ---------- */
 const clubMembers = ref([])
-/**
- * If a club is selected, load its users and show them in the "Filed by" filter.
- * Clear filed_by_user_id whenever the club changes to avoid stale selection.
- */
 watch(
     () => lastQuery.value.club_id,
     async (cid) => {
-        lastQuery.value.filed_by_user_id = '' // reset selection on club change
+        lastQuery.value.filed_by_user_id = ''
         if (!cid) {
             clubMembers.value = []
             return
@@ -167,7 +156,6 @@ watch(
     }
 )
 
-/** Options for the Filed-by select: members of selected club, else all users */
 const filedByOptions = computed(() =>
     lastQuery.value.club_id ? clubMembers.value : (userStore.users.data || [])
 )
@@ -195,14 +183,21 @@ const statusTone = (s) => {
     }
 }
 
+const currency = (n) => {
+    const num = Number(n)
+    if (!Number.isFinite(num)) return '0.00'
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const mainColumns = [
     { key: 'reference_code', label: 'Ref Code', sortable: true, width: 140 },
     { key: 'name_of_activity', label: 'Activity', sortable: true, minWidth: 220 },
+    { key: 'annual_plan_item', label: 'Annual Plan / Item', sortable: false, minWidth: 260 }, // NEW COLUMN
     { key: 'club_id', label: 'Club', sortable: false, formatter: (value, row) => (row.club ? row.club.name : '') },
     { key: 'semester', label: 'Sem', sortable: true, width: 110 },
     { key: 'school_year', label: 'S.Y.', sortable: true, width: 110 },
     { key: 'date_of_implementation', label: 'Implementation', sortable: true, width: 140, formatter: v => v ? new Date(v).toLocaleDateString() : '—' },
-    { key: 'nature_of_activity', label: 'Nature', sortable: true, width: 150 },
+    // { key: 'nature_of_activity', label: 'Nature', sortable: true, width: 150 },
     { key: 'status', label: 'Status', sortable: true, width: 120 },
 ]
 
@@ -217,6 +212,12 @@ const editInitial = ref(null)
 
 const openCreate = () => { createVisible.value = true }
 
+const parseJson = (j) => {
+    if (!j) return null
+    if (typeof j === 'object') return j
+    try { return JSON.parse(j) } catch { return null }
+}
+
 const onCreateSubmit = async (payload) => {
     await store.create(payload)
     createVisible.value = false
@@ -226,6 +227,7 @@ const onCreateSubmit = async (payload) => {
 const openEdit = async (row) => {
     await store.fetchById(row.id)
     const r = store.selected || row
+
     editInitial.value = {
         id: r.id,
         date_filed: r.date_filed || '',
@@ -246,6 +248,9 @@ const openEdit = async (row) => {
         club_id: r.club_id || '',
         status: r.status || 'draft',
         remarks: r.remarks || '',
+        // NEW: pass through annual plan link (id + snapshot of item)
+        annual_plan_id: r.annual_plan_id || '',
+        annual_plan_item: parseJson(r.annual_plan_item),
     }
     editVisible.value = true
 }
@@ -283,6 +288,8 @@ const openView = async (row) => {
         ...r,
         date_filed: r.date_filed ? String(r.date_filed).slice(0, 10) : '',
         date_of_implementation: r.date_of_implementation ? String(r.date_of_implementation).slice(0, 10) : '',
+        annual_plan_id: r.annual_plan_id || '',
+        annual_plan_item: parseJson(r.annual_plan_item),
     }
     editVisible.value = true
 }
@@ -394,7 +401,7 @@ const printItem = async (row) => {
     }
 
     try {
-        await store.fetchById(row.id)                              // get full record with includes
+        await store.fetchById(row.id)
         const full = store.selected || row
         await printActivityDesignPdf(full)
     } catch (e) {
@@ -518,8 +525,54 @@ const resetFilters = async () => {
 
             <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading"
                 @query-change="handleQueryChange">
-                <template #cell["club.name"]="{ row }">
-                    <div class="truncate max-w-[220px]">{{ row?.club?.name || '—' }}</div>
+                <!-- Annual Plan / Item column -->
+                <template #cell-annual_plan_item="{ row }">
+                    <div class="flex flex-col gap-1">
+                        <template v-if="row.annual_plan_id">
+                            <div class="text-xs">
+                                <span
+                                    class="inline-flex items-center gap-2 px-2 py-1 rounded bg-emerald-50 border border-emerald-200">
+                                    <span class="font-medium">{{ row.annual_plan?.reference_code ||
+                                        `AP-${row.annual_plan_id}` }}</span>
+                                    <span class="text-gray-600">SY {{ row.annual_plan?.school_year || '—' }}</span>
+                                </span>
+                            </div>
+
+                            <div class="text-xs text-gray-700">
+                                <span class="font-medium">
+                                    {{
+                                        (() => {
+                                            try {
+                                                const it = typeof row.annual_plan_item === 'string'
+                                                    ? (JSON.parse(row.annual_plan_item || 'null') || {})
+                                                    : (row.annual_plan_item || {})
+                                                return it.item || it.title || it.name || it.activity || '—'
+                                            } catch {
+                                                return '—'
+                                            }
+                                        })()
+                                    }}
+                                </span>
+                                <span class="text-gray-500">
+                                    —
+                                    ₱{{
+                                        (() => {
+                                            try {
+                                                const it = typeof row.annual_plan_item === 'string'
+                                                    ? (JSON.parse(row.annual_plan_item || 'null') || {})
+                                                    : (row.annual_plan_item || {})
+                                                return currency(it.funds ?? it.budget ?? 0)
+                                            } catch {
+                                                return currency(0)
+                                            }
+                                        })()
+                                    }}
+                                </span>
+                            </div>
+
+                        </template>
+                        <span v-else class="text-gray-400 text-xs">—</span>
+                    </div>
                 </template>
 
                 <template #cell-nature_of_activity="{ value }">
@@ -540,7 +593,6 @@ const resetFilters = async () => {
                     <ActivityRowActions v-else :row="row" :moderator="false" @attachments="openAttachments"
                         @submit="submitItem" @edit="openEdit" @delete="confirmDelete" @view="openView(row)"
                         @cancel="cancelItem" @print="printItem" />
-
                 </template>
             </BaseTable>
         </SectionMain>
