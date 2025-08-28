@@ -8,6 +8,7 @@ import {
   mdiAccountGroup,
   mdiAccountCircle,
   mdiFileDocument,
+  mdiAccount,
 } from "@mdi/js";
 
 /** Admin base menu (roles metadata) */
@@ -59,6 +60,12 @@ const ADMIN_MENU = [
     icon: mdiCashCheck,
     label: "Liquidation Forms",
     roles: ["admin", "student_officer"],
+  },
+  {
+    to: "/user-mgt",
+    icon: mdiAccount,
+    label: "User Management",
+    roles: ["admin"],
   },
   // {
   //   to: "/lobby-complains",

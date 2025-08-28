@@ -48,6 +48,11 @@ const loadClubs = async () => {
 onMounted(loadClubs)
 const clubName = (id) => clubs.value.find((c) => c.id === Number(id))?.name || '—'
 
+const schoolYearOptions = computed(() => {
+    const y = new Date().getFullYear()
+    return Array.from({ length: 6 }, (_, i) => `${y - i}-${y - i + 1}`)
+})
+
 /* ---------- QUERY STATE ---------- */
 const lastQuery = ref({
     page: 1,
@@ -287,8 +292,10 @@ const openAttachments = async (row) => {
                         <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
                     </select>
 
-                    <input v-model="lastQuery.school_year" placeholder="School Year (YYYY-YYYY)"
-                        class="border rounded px-2 py-2" />
+                    <select v-model="lastQuery.school_year" class="border rounded px-2 py-2" :disabled="readOnly">
+                        <option value="">Select school year…</option>
+                        <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
+                    </select>
 
                     <select v-model="lastQuery.club_id" class="border rounded px-2 py-2">
                         <option value="">Any club</option>

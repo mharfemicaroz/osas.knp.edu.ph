@@ -34,6 +34,11 @@ const visible = computed({
 const auth = useAuthStore()
 const store = useAnnualPlanStore()
 
+const schoolYearOptions = computed(() => {
+    const y = new Date().getFullYear()
+    return Array.from({ length: 6 }, (_, i) => `${y - i}-${y - i + 1}`)
+})
+
 const clubs = ref([])
 const loadClubs = async () => {
     try {
@@ -125,10 +130,14 @@ const onSubmit = () => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div>
                     <label class="block mb-1">School Year <span class="text-red-500">*</span></label>
-                    <input v-model="form.school_year" placeholder="e.g. 2025-2026"
-                        class="w-full border rounded px-2.5 py-2" :disabled="readOnly"
-                        :class="errors.school_year ? 'border-red-500' : ''" />
+
+                    <select v-model="form.school_year" class="w-full border rounded px-2.5 py-2" :disabled="readOnly">
+                        <option value="">Select school year…</option>
+                        <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
+                    </select>
+
                     <p v-if="errors.school_year" class="text-[11px] text-red-600 mt-1">{{ errors.school_year }}</p>
+
                 </div>
                 <div>
                     <label class="block mb-1">Club <span class="text-red-500">*</span></label>

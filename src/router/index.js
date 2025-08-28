@@ -67,6 +67,16 @@ const routes = [
     component: () => import("@/views/ClubsOrganizationPage.vue"),
   },
   {
+    meta: {
+      title: "User Management",
+      requiresAuth: true,
+      roles: ["admin"],
+    },
+    path: "/user-mgt",
+    name: "user-management",
+    component: () => import("@/views/UserManagementPage.vue"),
+  },
+  {
     meta: { title: "Profile", requiresAuth: true },
     path: "/profile/:id?",
     name: "profile",
