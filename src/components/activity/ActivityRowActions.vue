@@ -32,8 +32,9 @@ const canSubmit = computed(() => statusSafe.value === 'draft')
 const canEdit = computed(() => statusSafe.value === 'draft')
 const canView = computed(() => statusSafe.value !== 'draft')
 const canModerate = computed(() => props.moderator && statusSafe.value === 'pending')
-const canCancel = computed(() => statusSafe.value === 'approved')    // 👈 cancel only when approved
+const canCancel = computed(() => props.moderator && statusSafe.value === 'approved')    // 👈 cancel only when approved
 const canPrint = computed(() => statusSafe.value === 'approved')    // 👈 print only when approved
+const canDelete = computed(() => props.moderator)
 
 const open = ref(false)
 const menuRef = ref(null)
@@ -76,8 +77,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
             size="sm" @click="$emit('print', row)" />
 
         <!-- Delete (always visible; backend should enforce perms) -->
-        <IconifyButton :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete" size="sm"
-            @click="$emit('delete', row)" />
+        <IconifyButton v-if="canDelete" :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete"
+            size="sm" @click="$emit('delete', row)" />
 
         <!-- dropdown menu (mobile) -->
         <div class="relative md:hidden" ref="btnRef">
@@ -113,7 +114,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
                 <button v-if="canPrint" role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                     @click="open = false; $emit('print', row)">Print</button>
 
-                <button role="menuitem" class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                <button v-if="canDelete" role="menuitem"
+                    class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                     @click="open = false; $emit('delete', row)">Delete</button>
             </div>
         </div>

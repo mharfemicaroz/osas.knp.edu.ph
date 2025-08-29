@@ -20,12 +20,12 @@
             <div class="w-full max-w-md">
                 <div class="mb-6 text-center">
                     <a href="index.html" class="inline-flex items-center justify-center">
-                        <img src="/images/logo.png" alt="OSAS" class="h-14 w-auto" />
+                        <img src="/images/osas.png" alt="OSAS" class="h-14 w-auto" />
                     </a>
                     <h1 class="mt-4 text-2xl font-extrabold tracking-wide text-white">
                         Office of Student Affairs & Services
                     </h1>
-                    <p class="mt-1 text-primary-text/90 text-sm">Serve. Support. Empower.</p>
+                    <p class="mt-1 text-primary-text/90 text-sm">VIVERE EST SERVIRE</p>
                 </div>
 
                 <div

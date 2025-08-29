@@ -267,27 +267,27 @@ const onSubmit = () => {
 
 <template>
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-xl w-[980px] max-h-screen overflow-auto">
+        <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg w-[720px] max-h-[85vh] overflow-y-auto">
             <!-- Header -->
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-lg font-semibold">{{ titleText }}</h2>
-                    <span class="text-[11px] px-2 py-1 rounded bg-gray-100">{{ form.status }}</span>
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-base font-semibold">{{ titleText }}</h2>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100">{{ form.status }}</span>
                 </div>
-                <button class="px-3 py-1 text-xs bg-gray-200 rounded" @click="visible = false">Close</button>
+                <button class="px-2.5 py-1 text-[11px] bg-gray-200 rounded" @click="visible = false">Close</button>
             </div>
 
             <div v-if="readOnly"
-                class="mb-3 text-xs px-3 py-2 rounded-lg border bg-amber-50 border-amber-200 text-amber-800">
+                class="mb-2 text-[11px] px-2.5 py-1.5 rounded-lg border bg-amber-50 border-amber-200 text-amber-800">
                 This request is <strong>{{ form.status }}</strong>. Editing is disabled.
             </div>
 
             <!-- Compact core layout -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <!-- Activity Design (approved only) -->
                 <div class="md:col-span-2">
-                    <label class="block mb-1">Activity Design <span class="text-red-500">*</span></label>
-                    <select v-model="form.activity_design_id" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Activity Design <span class="text-red-500">*</span></label>
+                    <select v-model="form.activity_design_id" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly || adStore.isLoading"
                         :class="errors.activity_design_id ? 'border-red-500' : ''">
                         <option value="">Select approved activity design…</option>
@@ -295,95 +295,95 @@ const onSubmit = () => {
                             {{ adLabel(ad) }}
                         </option>
                     </select>
-                    <p v-if="errors.activity_design_id" class="text-red-600 text-[11px] mt-1">
+                    <p v-if="errors.activity_design_id" class="text-red-600 text-[11px] mt-0.5">
                         {{ errors.activity_design_id }}
                     </p>
-                    <p v-if="adStore.isLoading" class="text-[11px] text-gray-500 mt-1">
-                        Loading approved activities…
+                    <p v-if="adStore.isLoading" class="text-[11px] text-gray-500 mt-0.5">Loading approved activities…
                     </p>
-                    <p v-else-if="!approvedAds.length" class="text-[11px] text-amber-700 mt-1">
+                    <p v-else-if="!approvedAds.length" class="text-[11px] text-amber-700 mt-0.5">
                         No approved activity designs found. Approve an Activity Design first.
                     </p>
                 </div>
 
                 <!-- Start/End group -->
                 <div>
-                    <label class="block mb-1">Start Date <span class="text-red-500">*</span></label>
-                    <input v-model="form.start_date" type="date" class="w-full border rounded px-2.5 py-2 bg-gray-50"
+                    <label class="block mb-0.5">Start Date <span class="text-red-500">*</span></label>
+                    <input v-model="form.start_date" type="date" class="w-full border rounded px-2 py-1.5 bg-gray-50"
                         :readonly="true" :disabled="true" :class="errors.start_date ? 'border-red-500' : ''" />
-                    <p v-if="errors.start_date" class="text-red-600 text-[11px] mt-1">{{ errors.start_date }}</p>
+                    <p v-if="errors.start_date" class="text-red-600 text-[11px] mt-0.5">{{ errors.start_date }}</p>
                 </div>
                 <div>
-                    <label class="block mb-1">Start Time <span class="text-red-500">*</span></label>
-                    <input v-model="form.start_time" type="time" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Start Time <span class="text-red-500">*</span></label>
+                    <input v-model="form.start_time" type="time" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :class="errors.start_time ? 'border-red-500' : ''" />
-                    <p v-if="errors.start_time" class="text-red-600 text-[11px] mt-1">{{ errors.start_time }}</p>
+                    <p v-if="errors.start_time" class="text-red-600 text-[11px] mt-0.5">{{ errors.start_time }}</p>
                 </div>
 
                 <div>
-                    <label class="block mb-1">End Date <span class="text-red-500">*</span></label>
-                    <input v-model="form.end_date" type="date" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">End Date <span class="text-red-500">*</span></label>
+                    <input v-model="form.end_date" type="date" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :class="errors.end_date ? 'border-red-500' : ''" />
-                    <p v-if="errors.end_date" class="text-red-600 text-[11px] mt-1">{{ errors.end_date }}</p>
+                    <p v-if="errors.end_date" class="text-red-600 text-[11px] mt-0.5">{{ errors.end_date }}</p>
                 </div>
                 <div>
-                    <label class="block mb-1">End Time <span class="text-red-500">*</span></label>
-                    <input v-model="form.end_time" type="time" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">End Time <span class="text-red-500">*</span></label>
+                    <input v-model="form.end_time" type="time" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :class="errors.end_time ? 'border-red-500' : ''" />
-                    <p v-if="errors.end_time" class="text-red-600 text-[11px] mt-1">{{ errors.end_time }}</p>
+                    <p v-if="errors.end_time" class="text-red-600 text-[11px] mt-0.5">{{ errors.end_time }}</p>
                 </div>
             </div>
 
-            <!-- Facilities (from predefined list only) -->
-            <div class="mt-3 text-sm">
-                <label class="block mb-1">Facilities <span class="text-red-500">*</span></label>
-                <div class="flex gap-2">
-                    <select v-model="facilitySelect" class="border rounded px-2.5 py-2" :disabled="readOnly">
+            <!-- Facilities -->
+            <div class="mt-2 text-sm">
+                <label class="block mb-0.5">Facilities <span class="text-red-500">*</span></label>
+                <div class="flex gap-1.5">
+                    <select v-model="facilitySelect" class="border rounded px-2 py-1.5 min-w-[200px]"
+                        :disabled="readOnly">
                         <option value="">Select facility…</option>
                         <option v-for="f in remainingFacilities" :key="f" :value="f">{{ f }}</option>
                     </select>
-                    <button class="px-3 py-2 bg-gray-200 rounded text-xs" :disabled="readOnly || !facilitySelect"
-                        @click="addFacility">
+                    <button class="px-2.5 py-1.5 bg-gray-200 rounded text-[11px]"
+                        :disabled="readOnly || !facilitySelect" @click="addFacility">
                         Add
                     </button>
                 </div>
-                <p v-if="errors.facilities" class="text-red-600 text-[11px] mt-1">{{ errors.facilities }}</p>
+                <p v-if="errors.facilities" class="text-red-600 text-[11px] mt-0.5">{{ errors.facilities }}</p>
 
-                <div class="mt-2 flex flex-wrap gap-2">
+                <div class="mt-1.5 flex flex-wrap gap-1.5">
                     <span v-for="(f, i) in form.facilities" :key="f"
-                        class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-700">
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px]">
                         {{ f }}
                         <button v-if="!readOnly" class="text-slate-500 hover:text-red-600"
                             @click="removeFacility(i)">×</button>
                     </span>
-                    <span v-if="!form.facilities?.length" class="text-gray-400">No facilities selected</span>
+                    <span v-if="!form.facilities?.length" class="text-gray-400 text-xs">No facilities selected</span>
                 </div>
             </div>
 
-            <!-- Equipment (from predefined list only) -->
-            <div class="mt-4 text-sm">
+            <!-- Equipment -->
+            <div class="mt-3 text-sm">
                 <div class="flex items-center justify-between">
-                    <label class="block mb-1">Equipment / Materials (optional)</label>
-                    <button class="px-3 py-1 bg-gray-200 rounded text-xs"
+                    <label class="block mb-0.5">Equipment / Materials (optional)</label>
+                    <button class="px-2.5 py-1 bg-gray-200 rounded text-[11px]"
                         :disabled="readOnly || remainingEquipOptionsFor(-1).length === 0" @click="addEquip">
                         Add Row
                     </button>
                 </div>
 
-                <div class="mt-2 border rounded overflow-hidden">
-                    <table class="w-full text-xs">
+                <div class="mt-1 border rounded overflow-hidden">
+                    <table class="w-full text-[12px]">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="text-left p-2">Item</th>
-                                <th class="text-left p-2">Qty</th>
-                                <th class="text-left p-2">Unit</th>
-                                <th class="p-2 w-16"></th>
+                                <th class="text-left p-1.5">Item</th>
+                                <th class="text-left p-1.5">Qty</th>
+                                <th class="text-left p-1.5">Unit</th>
+                                <th class="p-1.5 w-14"></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="(it, idx) in form.equipment_items" :key="idx" class="border-t">
-                                <td class="p-2">
-                                    <select v-model="it.name" class="w-full border rounded px-2 py-1"
+                                <td class="p-1.5">
+                                    <select v-model="it.name" class="w-full border rounded px-2 py-1.5"
                                         :disabled="readOnly"
                                         @change="() => { if (it.qty == null || it.qty <= 0) it.qty = 1 }">
                                         <option
@@ -392,62 +392,63 @@ const onSubmit = () => {
                                             {{ opt }}
                                         </option>
                                     </select>
-                                    <div v-if="errors[`equipment_${idx}`]" class="text-red-600 mt-1">
+                                    <div v-if="errors[`equipment_${idx}`]" class="text-red-600 mt-0.5 text-[11px]">
                                         {{ errors[`equipment_${idx}`] }}
                                     </div>
                                 </td>
-                                <td class="p-2">
+                                <td class="p-1.5">
                                     <input v-model.number="it.qty" type="number" min="1"
-                                        class="w-24 border rounded px-2 py-1" :disabled="readOnly" />
+                                        class="w-20 border rounded px-2 py-1.5" :disabled="readOnly" />
                                 </td>
-                                <td class="p-2">
-                                    <input v-model="it.unit" class="w-28 border rounded px-2 py-1" :disabled="readOnly"
-                                        placeholder="e.g., pcs" />
+                                <td class="p-1.5">
+                                    <input v-model="it.unit" class="w-24 border rounded px-2 py-1.5"
+                                        :disabled="readOnly" placeholder="e.g., pcs" />
                                 </td>
-                                <td class="p-2 text-right">
-                                    <button class="px-2 py-1 bg-red-50 text-red-700 rounded" :disabled="readOnly"
-                                        @click="removeEquip(idx)">Remove</button>
+                                <td class="p-1.5 text-right">
+                                    <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[11px]"
+                                        :disabled="readOnly" @click="removeEquip(idx)">
+                                        Remove
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="text-[11px] text-gray-500 mt-1">
-                    Each equipment name must be unique; adjust quantity for multiples.
-                </p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Each equipment name must be unique; adjust quantity for
+                    multiples.</p>
             </div>
 
-            <!-- Details / Remarks + Availability (compact two-column) -->
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <!-- Details / Remarks -->
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <div>
-                    <label class="block mb-1">Utilization Details (duration, purpose, notes)</label>
-                    <textarea v-model="form.utilization_details" rows="4" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Utilization Details (duration, purpose, notes)</label>
+                    <textarea v-model="form.utilization_details" rows="3" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" />
                 </div>
                 <div>
-                    <label class="block mb-1">Remarks</label>
-                    <textarea v-model="form.remarks" rows="4" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Remarks</label>
+                    <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" />
                 </div>
             </div>
 
-            <div class="mt-3 p-3 rounded-lg border bg-white">
+            <!-- Availability -->
+            <div class="mt-2 p-2 rounded-lg border bg-white">
                 <div class="flex items-center justify-between">
-                    <div class="text-sm font-medium">Check Availability</div>
-                    <button class="px-3 py-1 bg-indigo-600 text-white rounded text-xs" :disabled="readOnly"
+                    <div class="text-[13px] font-medium">Check Availability</div>
+                    <button class="px-2.5 py-1 bg-indigo-600 text-white rounded text-[11px]" :disabled="readOnly"
                         @click="checkAvailability">
                         Run Check
                     </button>
                 </div>
-                <div class="mt-1 text-xs text-gray-500">
-                    Uses current form values (start/end &amp; facilities) to detect overlaps.
-                </div>
+                <div class="mt-0.5 text-[11px] text-gray-500">Uses current form values (start/end &amp; facilities) to
+                    detect overlaps.</div>
             </div>
 
             <!-- Footer -->
-            <div class="flex justify-end gap-2 mt-5">
-                <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
-                <button v-if="!readOnly" class="px-4 py-2 bg-blue-600 text-white rounded text-xs" @click="onSubmit">
+            <div class="flex justify-end gap-1.5 mt-4">
+                <button class="px-3 py-1.5 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
+                <button v-if="!readOnly" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs" @click="onSubmit">
                     {{ submitText }}
                 </button>
             </div>

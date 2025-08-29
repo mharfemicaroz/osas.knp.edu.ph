@@ -591,8 +591,7 @@ const resetFilters = async () => {
                         @view="openView(row)" @cancel="cancelItem" @print="printItem" />
 
                     <ActivityRowActions v-else :row="row" :moderator="false" @attachments="openAttachments"
-                        @submit="submitItem" @edit="openEdit" @delete="confirmDelete" @view="openView(row)"
-                        @cancel="cancelItem" @print="printItem" />
+                        @submit="submitItem" @edit="openEdit" @view="openView(row)" @print="printItem" />
                 </template>
             </BaseTable>
         </SectionMain>

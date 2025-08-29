@@ -10,7 +10,7 @@ import BaseTable from '@/components/BaseTable.vue'
 import NotificationBar from '@/components/NotificationBar.vue'
 import Badge from '@/components/commons/Badge.vue'
 
-import AnnualPlanRowActions from '@/components/annualPlan/AnnualPlanRowActions.vue'
+import AnnualPlanRowActions from '@/components/activity/ActivityRowActions.vue'
 import AnnualPlanFormModal from '@/components/annualPlan/AnnualPlanFormModal.vue'
 import AnnualPlanAttachmentsModal from '@/components/annualPlan/AnnualPlanAttachmentsModal.vue'
 import AnnualPlansCalendarModal from '@/components/annualPlan/AnnualPlansCalendarModal.vue'

@@ -21,6 +21,7 @@ import ActivityRowActions from '@/components/activity/ActivityRowActions.vue'
 import UtilizationRequestFormModal from '@/components/utilization/UtilizationRequestFormModal.vue'
 import UtilizationAttachmentsModal from '@/components/utilization/UtilizationAttachmentsModal.vue'
 import CalendarViewModal from '@/components/utilization/CalendarViewModal.vue'
+import QuickAvailabilityModal from '@/components/utilization/QuickAvailabilityModal.vue'
 
 import { printUtilizationRequestPdf } from '@/utils/printUtilizationRequest'
 
@@ -35,6 +36,7 @@ import {
     mdiRefresh,
     mdiCalendarClock,
     mdiMagnify,
+    mdiCalendarCheck,
 } from '@mdi/js'
 
 const store = useUtilizationRequestStore()
@@ -42,6 +44,9 @@ const authStore = useAuthStore()
 
 const calendarVisible = ref(false)
 const openCalendar = () => { calendarVisible.value = true }
+
+const quickCheckVisible = ref(false)
+const openQuickCheck = () => { quickCheckVisible.value = true }
 
 const openFromCalendar = async (id) => {
     try {
@@ -501,7 +506,7 @@ const resetFilters = async () => {
             <SectionTitleLineWithButton :icon="mdiTableBorder" title="Utilization Requests" main>
                 <div class="flex items-center gap-2">
                     <BaseButton :icon="mdiCalendarClock" color="info" label="View Calendar" @click="openCalendar" />
-
+                    <BaseButton :icon="mdiCalendarCheck" color="info" label="Quick Check" @click="openQuickCheck" />
                     <BaseButton :icon="mdiPlus" color="primary" label="New Request" @click="openCreate" />
                     <BaseButton :icon="mdiRefresh" color="info" label="Refresh" @click="fetchAll({}, true)" />
                 </div>
@@ -564,56 +569,6 @@ const resetFilters = async () => {
                 </div>
             </div>
 
-            <!-- Availability quick checker -->
-            <!-- Availability quick checker -->
-            <div class="p-3 mb-4 rounded-xl border bg-white/60">
-                <div class="flex items-center gap-2 mb-2 text-gray-700">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24">
-                        <path :d="mdiCalendarClock" />
-                    </svg>
-                    <span class="font-medium text-sm">Quick Availability Check</span>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
-                    <!-- Start and End (date & time) -->
-                    <div class="md:col-span-2">
-                        <input v-model="avStartDate" type="date" class="border rounded px-2 py-2 w-full"
-                            placeholder="Start date" />
-                    </div>
-                    <div class="md:col-span-1">
-                        <input v-model="avStartTime" type="time" class="border rounded px-2 py-2 w-full"
-                            placeholder="Start time" />
-                    </div>
-                    <div class="md:col-span-2">
-                        <input v-model="avEndDate" type="date" class="border rounded px-2 py-2 w-full"
-                            placeholder="End date" />
-                    </div>
-                    <div class="md:col-span-1">
-                        <input v-model="avEndTime" type="time" class="border rounded px-2 py-2 w-full"
-                            placeholder="End time" />
-                    </div>
-
-                    <!-- Facilities (smaller width) -->
-                    <div class="md:col-span-2">
-                        <label class="block text-[11px] text-gray-600 mb-1">Facilities</label>
-                        <select v-model="avFacilities" multiple class="w-full border rounded px-2 py-2 min-h-[38px]">
-                            <option v-for="f in FACILITY_OPTIONS" :key="f" :value="f">{{ f }}</option>
-                        </select>
-                    </div>
-
-                    <!-- Buttons on same line -->
-                    <div class="flex items-center gap-2 md:col-span-2">
-                        <button class="px-4 py-2 bg-indigo-600 text-white rounded text-xs" @click="runAvailability">
-                            Check
-                        </button>
-                        <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="resetAvailability">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-
             <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading"
                 @query-change="handleQueryChange">
                 <template #cell-facilities="{ row }">
@@ -658,4 +613,5 @@ const resetFilters = async () => {
         @submit="onEditSubmit" />
     <UtilizationAttachmentsModal v-model="attachVisible" :row="attachRow" />
     <CalendarViewModal v-model="calendarVisible" @open="openFromCalendar" />
+    <QuickAvailabilityModal v-model="quickCheckVisible" :facilities="FACILITY_OPTIONS" />
 </template>

@@ -320,48 +320,44 @@ const onSubmit = () => {
 
 <template>
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-xl w-[1100px] max-h-screen overflow-auto">
-            <!-- Header -->
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-lg font-semibold">{{ titleText }}</h2>
-                    <span class="text-[11px] px-2 py-1 rounded" :class="statusTone">{{ form.status }}</span>
+        <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg w-[780px] max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-base font-semibold">{{ titleText }}</h2>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded" :class="statusTone">{{ form.status }}</span>
                 </div>
-                <button class="px-3 py-1 text-xs bg-gray-200 rounded" @click="visible = false">Close</button>
+                <button class="px-2.5 py-1 text-[11px] bg-gray-200 rounded" @click="visible = false">Close</button>
             </div>
 
-            <!-- Read-only banner -->
             <div v-if="readOnly"
-                class="mb-3 text-xs px-3 py-2 rounded-lg border bg-amber-50 border-amber-200 text-amber-800">
+                class="mb-2 text-[11px] px-2.5 py-1.5 rounded-lg border bg-amber-50 border-amber-200 text-amber-800">
                 This activity has been submitted and is now <strong>{{ form.status }}</strong>. Editing is disabled.
             </div>
 
-            <!-- Section: Optional link to Annual Plan -->
-            <div class="p-3 mb-3 rounded-xl border bg-white/70">
-                <div class="flex items-center justify-between mb-2">
+            <div class="p-2 mb-2 rounded-xl border bg-white/70">
+                <div class="flex items-center justify-between mb-1">
                     <div class="text-sm font-medium">Link to Annual Plan (optional)</div>
                     <button v-if="!readOnly && (isApLinked || form.annual_plan_item)"
-                        class="text-xs px-2 py-1 rounded border bg-gray-50 hover:bg-gray-100" @click="resetAnnualLink">
-                        Reset Annual Plan link
-                    </button>
+                        class="text-[11px] px-2 py-1 rounded border bg-gray-50 hover:bg-gray-100"
+                        @click="resetAnnualLink">Reset Annual Plan link</button>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                     <div>
-                        <label class="block mb-1">Annual Plan</label>
-                        <select v-model="form.annual_plan_id" class="w-full border rounded px-2.5 py-2"
+                        <label class="block mb-0.5">Annual Plan</label>
+                        <select v-model="form.annual_plan_id" class="w-full border rounded px-2 py-1.5"
                             :disabled="readOnly">
                             <option value="">— Not linked —</option>
                             <option v-for="ap in approvedAnnualPlans" :key="ap.id" :value="ap.id">
-                                {{ ap.reference_code }} — SY {{ ap.school_year }} — {{ ap?.club?.name ||
-                                    'Club#' + ap.club_id }}
+                                {{ ap.reference_code }} — SY {{ ap.school_year }} — {{ ap?.club?.name || 'Club#' +
+                                ap.club_id }}
                             </option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block mb-1">Plan Item</label>
-                        <select v-model="selectedPlanItemKey" class="w-full border rounded px-2.5 py-2"
+                        <label class="block mb-0.5">Plan Item</label>
+                        <select v-model="selectedPlanItemKey" class="w-full border rounded px-2 py-1.5"
                             :disabled="readOnly || !form.annual_plan_id || !planItems.length">
                             <option value="">— Select item —</option>
                             <option v-for="it in planItems" :key="it.key" :value="it.key">
@@ -371,13 +367,12 @@ const onSubmit = () => {
                     </div>
 
                     <div class="self-end text-[11px] text-gray-600">
-                        Choosing an Annual Plan will lock the <strong>Club</strong>. Picking a plan item will also
-                        auto-fill
+                        Choosing an Annual Plan locks the <strong>Club</strong>. Selecting an item also auto-fills
                         <strong>School Year</strong> and <strong>Proposed Budget</strong>.
                     </div>
                 </div>
 
-                <div v-if="form.annual_plan_item" class="mt-3 text-xs rounded-lg border bg-gray-50 px-3 py-2">
+                <div v-if="form.annual_plan_item" class="mt-2 text-[11px] rounded-lg border bg-gray-50 px-2.5 py-1.5">
                     <div class="flex flex-wrap gap-3">
                         <div>
                             <span class="text-gray-500">Item:</span>
@@ -387,7 +382,7 @@ const onSubmit = () => {
                         <div>
                             <span class="text-gray-500">Funds:</span>
                             <strong>₱{{ currency(form.annual_plan_item.funds || form.annual_plan_item.budget || 0)
-                            }}</strong>
+                                }}</strong>
                         </div>
                         <div v-if="selectedAnnualPlan">
                             <span class="text-gray-500">SY:</span>
@@ -396,164 +391,152 @@ const onSubmit = () => {
                         <div v-if="selectedAnnualPlan?.club">
                             <span class="text-gray-500">Club:</span>
                             <strong>{{ selectedAnnualPlan.club.name }} ({{ selectedAnnualPlan.club.code || '—'
-                            }})</strong>
+                                }})</strong>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section: Core details -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                 <div>
-                    <label class="block mb-1">Date Filed <span class="text-red-500">*</span></label>
-                    <input v-model="form.date_filed" type="date" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Date Filed <span class="text-red-500">*</span></label>
+                    <input v-model="form.date_filed" type="date" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" />
-                    <p v-if="errors.date_filed" class="text-red-600 text-[11px] mt-1">{{ errors.date_filed }}</p>
+                    <p v-if="errors.date_filed" class="text-red-600 text-[11px] mt-0.5">{{ errors.date_filed }}</p>
                 </div>
 
                 <div>
-                    <label class="block mb-1">School Year <span class="text-red-500">*</span></label>
-                    <select v-model="form.school_year" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">School Year <span class="text-red-500">*</span></label>
+                    <select v-model="form.school_year" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly || isApLinked">
                         <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
                     </select>
-                    <p v-if="errors.school_year" class="text-red-600 text-[11px] mt-1">{{ errors.school_year }}</p>
+                    <p v-if="errors.school_year" class="text-red-600 text-[11px] mt-0.5">{{ errors.school_year }}</p>
                 </div>
 
                 <div>
-                    <label class="block mb-1">Semester <span class="text-red-500">*</span></label>
-                    <select v-model="form.semester" class="w-full border rounded px-2.5 py-2" :disabled="readOnly">
+                    <label class="block mb-0.5">Semester <span class="text-red-500">*</span></label>
+                    <select v-model="form.semester" class="w-full border rounded px-2 py-1.5" :disabled="readOnly">
                         <option disabled value="">Select semester…</option>
                         <option v-for="s in SEMESTERS" :key="s" :value="s">{{ s }}</option>
                     </select>
-                    <p v-if="errors.semester" class="text-red-600 text-[11px] mt-1">{{ errors.semester }}</p>
+                    <p v-if="errors.semester" class="text-red-600 text-[11px] mt-0.5">{{ errors.semester }}</p>
                 </div>
 
                 <div class="md:col-span-3">
-                    <label class="block mb-1">Name of Activity <span class="text-red-500">*</span></label>
-                    <input v-model="form.name_of_activity" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Name of Activity <span class="text-red-500">*</span></label>
+                    <input v-model="form.name_of_activity" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" />
-                    <p v-if="errors.name_of_activity" class="text-red-600 text-[11px] mt-1">{{ errors.name_of_activity
-                    }}</p>
+                    <p v-if="errors.name_of_activity" class="text-red-600 text-[11px] mt-0.5">{{ errors.name_of_activity
+                        }}</p>
                 </div>
             </div>
 
-            <!-- Section: Logistics -->
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                 <div>
-                    <label class="block mb-1">
+                    <label class="block mb-0.5">
                         Club <span class="text-red-500">*</span>
                         <span v-if="isApLinked"
                             class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 align-middle">locked
                             by Annual Plan</span>
                     </label>
-                    <select v-model="form.club_id" class="w-full border rounded px-2.5 py-2"
+                    <select v-model="form.club_id" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly || isApLinked">
                         <option value="">Select club…</option>
-                        <option v-for="c in (clubStore.clubs.data || [])" :key="c.id" :value="c.id">
-                            {{ c.name }}
+                        <option v-for="c in (clubStore.clubs.data || [])" :key="c.id" :value="c.id">{{ c.name }}
                         </option>
                     </select>
-                    <p v-if="errors.club_id" class="text-red-600 text-[11px] mt-1">{{ errors.club_id }}</p>
+                    <p v-if="errors.club_id" class="text-red-600 text-[11px] mt-0.5">{{ errors.club_id }}</p>
                 </div>
 
                 <div>
-                    <label class="block mb-1">Venue</label>
-                    <input v-model="form.venue" class="w-full border rounded px-2.5 py-2" :disabled="readOnly" />
+                    <label class="block mb-0.5">Venue</label>
+                    <input v-model="form.venue" class="w-full border rounded px-2 py-1.5" :disabled="readOnly" />
                 </div>
 
                 <div>
-                    <label class="block mb-1">Date of Implementation <span class="text-red-500">*</span></label>
-                    <input v-model="form.date_of_implementation" type="date" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Date of Implementation <span class="text-red-500">*</span></label>
+                    <input v-model="form.date_of_implementation" type="date" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :aria-invalid="!!errors.date_of_implementation"
                         :class="errors.date_of_implementation ? 'border-red-500' : ''" />
-                    <p v-if="errors.date_of_implementation" class="text-red-600 text-[11px] mt-1">
-                        {{ errors.date_of_implementation }}
-                    </p>
+                    <p v-if="errors.date_of_implementation" class="text-red-600 text-[11px] mt-0.5">{{
+                        errors.date_of_implementation }}</p>
                 </div>
             </div>
 
-            <!-- Section: Budget & Nature -->
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                 <div>
-                    <label class="block mb-1">Proposed Budget</label>
+                    <label class="block mb-0.5">Proposed Budget</label>
                     <input v-model="form.proposed_budget" type="number" step="0.01" min="0"
-                        class="w-full border rounded px-2.5 py-2" :disabled="readOnly" />
+                        class="w-full border rounded px-2 py-1.5" :disabled="readOnly" />
                 </div>
 
                 <div>
-                    <label class="block mb-1">Nature of Activity <span class="text-red-500">*</span></label>
-                    <select v-model="form.nature_of_activity" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Nature of Activity <span class="text-red-500">*</span></label>
+                    <select v-model="form.nature_of_activity" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :aria-invalid="!!errors.nature_of_activity"
                         :class="errors.nature_of_activity ? 'border-red-500' : ''">
                         <option v-for="n in NATURES" :key="n" :value="n">{{ n }}</option>
                     </select>
-                    <p v-if="errors.nature_of_activity" class="text-red-600 text-[11px] mt-1">
-                        {{ errors.nature_of_activity }}
-                    </p>
+                    <p v-if="errors.nature_of_activity" class="text-red-600 text-[11px] mt-0.5">{{
+                        errors.nature_of_activity }}</p>
                 </div>
 
                 <div>
-                    <label class="block mb-1">Participants</label>
-                    <input v-model="form.participants" class="w-full border rounded px-2.5 py-2" :disabled="readOnly" />
+                    <label class="block mb-0.5">Participants</label>
+                    <input v-model="form.participants" class="w-full border rounded px-2 py-1.5" :disabled="readOnly" />
                 </div>
             </div>
 
-            <!-- Section: Long texts (REQUIRED) -->
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <div>
-                    <label class="block mb-1">Rationale <span class="text-red-500">*</span></label>
-                    <textarea v-model="form.rationale" rows="3" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Rationale <span class="text-red-500">*</span></label>
+                    <textarea v-model="form.rationale" rows="3" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :aria-invalid="!!errors.rationale"
                         :class="errors.rationale ? 'border-red-500' : ''" />
-                    <p v-if="errors.rationale" class="text-red-600 text-[11px] mt-1">{{ errors.rationale }}</p>
+                    <p v-if="errors.rationale" class="text-red-600 text-[11px] mt-0.5">{{ errors.rationale }}</p>
                 </div>
                 <div>
-                    <label class="block mb-1">Objectives <span class="text-red-500">*</span></label>
-                    <textarea v-model="form.objectives" rows="3" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Objectives <span class="text-red-500">*</span></label>
+                    <textarea v-model="form.objectives" rows="3" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :aria-invalid="!!errors.objectives"
                         :class="errors.objectives ? 'border-red-500' : ''" />
-                    <p v-if="errors.objectives" class="text-red-600 text-[11px] mt-1">{{ errors.objectives }}</p>
+                    <p v-if="errors.objectives" class="text-red-600 text-[11px] mt-0.5">{{ errors.objectives }}</p>
                 </div>
             </div>
 
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <div>
-                    <label class="block mb-1">Details of the Activity <span class="text-red-500">*</span></label>
-                    <textarea v-model="form.details_of_activity" rows="4" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Details of the Activity <span class="text-red-500">*</span></label>
+                    <textarea v-model="form.details_of_activity" rows="4" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :aria-invalid="!!errors.details_of_activity"
                         :class="errors.details_of_activity ? 'border-red-500' : ''" />
-                    <p v-if="errors.details_of_activity" class="text-red-600 text-[11px] mt-1">
-                        {{ errors.details_of_activity }}
-                    </p>
+                    <p v-if="errors.details_of_activity" class="text-red-600 text-[11px] mt-0.5">{{
+                        errors.details_of_activity }}</p>
                 </div>
                 <div>
-                    <label class="block mb-1">Budgetary Requirements <span class="text-red-500">*</span></label>
-                    <textarea v-model="form.budgetary_requirements" rows="4" class="w-full border rounded px-2.5 py-2"
+                    <label class="block mb-0.5">Budgetary Requirements <span class="text-red-500">*</span></label>
+                    <textarea v-model="form.budgetary_requirements" rows="4" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" :aria-invalid="!!errors.budgetary_requirements"
                         :class="errors.budgetary_requirements ? 'border-red-500' : ''" />
-                    <p v-if="errors.budgetary_requirements" class="text-red-600 text-[11px] mt-1">
-                        {{ errors.budgetary_requirements }}
-                    </p>
+                    <p v-if="errors.budgetary_requirements" class="text-red-600 text-[11px] mt-0.5">{{
+                        errors.budgetary_requirements }}</p>
                 </div>
             </div>
 
-            <!-- Section: Workflow note / remarks -->
-            <div class="mt-3 text-sm">
-                <label class="block mb-1">Remarks</label>
-                <textarea v-model="form.remarks" rows="2" class="w-full border rounded px-2.5 py-2"
+            <div class="mt-2 text-sm">
+                <label class="block mb-0.5">Remarks</label>
+                <textarea v-model="form.remarks" rows="2" class="w-full border rounded px-2 py-1.5"
                     :disabled="readOnly" />
             </div>
 
-            <!-- Hidden fields to ensure values are posted -->
             <input type="hidden" v-model="form.filed_by_user_id" />
             <input type="hidden" v-model="form.office_department" />
             <input type="hidden" v-model="form.status" />
 
-            <!-- Footer -->
-            <div class="flex justify-end gap-2 mt-5">
-                <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
-                <button v-if="!readOnly" class="px-4 py-2 bg-blue-600 text-white rounded text-xs" @click="onSubmit">
+            <div class="flex justify-end gap-1.5 mt-4">
+                <button class="px-3 py-1.5 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
+                <button v-if="!readOnly" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs" @click="onSubmit">
                     {{ submitText }}
                 </button>
             </div>

@@ -14,11 +14,10 @@ export const useAuthStore = defineStore("auth", () => {
   const isLoading = ref(false);
   const requiresVerification = ref(false);
 
-  const register = async (payload) => {
+  const register = async (payload, captchaToken) => {
     try {
       isLoading.value = true;
 
-      // 1) Try to check if email exists (if backend endpoint is available)
       try {
         const check = await apiAuth.checkEmail(payload.email);
         if (check?.exists) {
@@ -27,15 +26,46 @@ export const useAuthStore = defineStore("auth", () => {
           );
         }
       } catch (e) {
-        // If /check-email endpoint isn't available, ignore and proceed to register.
-        // We rely on /register to return a proper error if duplicate.
         if (!(e?.response?.status === 404)) {
-          // Do nothing for 404; for other network errors, still proceed
         }
       }
 
-      // 2) Proceed with registration
-      const data = await apiAuth.register(payload);
+      const data = await apiAuth.register(payload, { captchaToken });
+
+      if (data.requiresVerification) {
+        requiresVerification.value = true;
+        return { requiresVerification: true };
+      }
+
+      if (data.requires2FA) {
+        requires2FA.value = true;
+        tempToken.value = data.tempToken;
+        localStorage.setItem("requires2FA", "true");
+        localStorage.setItem("tempToken", tempToken.value);
+        router.push("/otp");
+        return { requires2FA: true };
+      }
+
+      if (data.accessToken) {
+        token.value = data.accessToken;
+        refreshToken.value = data.refreshToken;
+        localStorage.setItem("authToken", token.value);
+        localStorage.setItem("refreshToken", refreshToken.value);
+
+        user.value = {
+          id: data.userdata.id,
+          email: data.userdata.email,
+          role: data.userdata.role,
+          twoFAEnabled: data.userdata.twoFAEnabled,
+          first_name: data.userdata.first_name,
+          last_name: data.userdata.last_name,
+          username: data.userdata.username,
+        };
+        localStorage.setItem("userData", JSON.stringify(user.value));
+        router.push("/profile");
+        return { ok: true };
+      }
+
       return data;
     } catch (e) {
       throw new Error(
@@ -225,18 +255,30 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  const startGoogleLogin = (hashRoute = "#/login") => {
+  // make startGoogleLogin accept an action and include a captcha token
+  const startGoogleLogin = async (
+    hashRoute = "#/login",
+    action = "sso_start"
+  ) => {
     const state =
       window.location.origin +
       window.location.pathname +
       window.location.search +
       hashRoute;
-    const url = apiAuth.getGoogleStartUrl(state);
+
+    let captchaToken = null;
+    try {
+      // if your backend expects a specific action, change here
+      captchaToken = await apiAuth.getCaptchaToken(action);
+    } catch {}
+
+    const url = apiAuth.getGoogleStartUrl(state, { captchaToken });
     window.location.href = url;
   };
 
   const consumeSsoFromHash = () => {
     const parsed = apiAuth.parseSsoHash(window.location.hash);
+    console.log(window.location.hash);
     if (parsed.error) throw new Error(parsed.error);
     if (parsed.sso !== "google" || !parsed.accessToken) return false;
 
