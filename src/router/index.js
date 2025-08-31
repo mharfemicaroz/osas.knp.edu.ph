@@ -77,6 +77,16 @@ const routes = [
     component: () => import("@/views/UserManagementPage.vue"),
   },
   {
+    meta: {
+      title: "Memberships",
+      requiresAuth: true,
+      roles: ["admin"],
+    },
+    path: "/memberships",
+    name: "memberships",
+    component: () => import("@/views/MembershipPage.vue"),
+  },
+  {
     meta: { title: "Profile", requiresAuth: true },
     path: "/profile/:id?",
     name: "profile",
@@ -135,6 +145,16 @@ const routes = [
     path: "/annual-plans",
     name: "annual-plans",
     component: () => import("@/views/AnnualPlansPage.vue"),
+  },
+  {
+    meta: {
+      title: "Workflows",
+      requiresAuth: true,
+      roles: ["admin"],
+    },
+    path: "/workflows",
+    name: "workflows",
+    component: () => import("@/views/WorkFlowsPage.vue"),
   },
   {
     meta: {

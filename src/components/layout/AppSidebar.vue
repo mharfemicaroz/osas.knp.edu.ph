@@ -6,7 +6,7 @@
             <a href="#" @click.prevent.stop="$emit('request-logout')"
                 class="flex items-center p-2 hover:bg-tertiary rounded mt-4">
                 <BaseIcon :path="mdiLogout" :size="20" cls="mr-2 text-yellow-300" />
-                <span>Log Out</span>
+                <span>Log out</span>
             </a>
         </nav>
     </aside>

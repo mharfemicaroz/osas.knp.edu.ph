@@ -171,32 +171,16 @@
                                 <p v-if="passwordsDontMatch" class="text-xs text-rose-600">Passwords do not match.</p>
                             </div>
 
-                            <!-- Captcha -->
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-sm font-medium text-gray-700">Captcha</label>
-                                    <button type="button" @click="genCaptcha"
-                                        class="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                                        <i class="mdi mdi-refresh"></i>
-                                        Refresh
-                                    </button>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <div class="flex-1">
-                                        <div
-                                            class="w-full rounded-xl border border-gray-300/80 bg-white/70 px-3 py-2.5 text-gray-900 flex items-center justify-between">
-                                            <span class="text-sm select-none">{{ captchaA }} + {{ captchaB }} =</span>
-                                            <input class="ml-3 w-24 text-right bg-transparent focus:outline-none"
-                                                inputmode="numeric" pattern="[0-9]*" placeholder="Answer"
-                                                v-model.trim="captchaInput" />
-                                        </div>
-                                    </div>
-                                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg"
-                                        :class="captchaStateClass">
-                                        <i :class="captchaIconClass"></i>
-                                    </span>
-                                </div>
-                                <p v-if="captchaError" class="text-xs text-red-600">{{ captchaError }}</p>
+                            <!-- reCAPTCHA status -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] text-gray-500 inline-flex items-center gap-1">
+                                    <i class="mdi mdi-shield-check-outline"></i>
+                                    Protected by reCAPTCHA Enterprise
+                                </span>
+                                <span class="text-[11px]" :class="recaptchaStatusClass">
+                                    <i :class="recaptchaIconClass"></i>
+                                    <span class="ml-1">{{ recaptchaStatusText }}</span>
+                                </span>
                             </div>
 
                             <!-- Submit -->
@@ -286,10 +270,8 @@ const capsOnPwd = ref(false);
 const capsOnConfirm = ref(false);
 const triedSubmit = ref(false);
 const honeypot = ref("");
-const captchaA = ref(0);
-const captchaB = ref(0);
-const captchaInput = ref("");
-const captchaError = ref("");
+const recaptchaReady = ref(false);
+const recaptchaError = ref("");
 const toast = ref(null);
 
 // Computed
@@ -299,13 +281,17 @@ const passwordValid = computed(() => /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(passwo
 const passwordsDontMatch = computed(() => password.value && confirmPassword.value && password.value !== confirmPassword.value);
 const captchaAnswer = computed(() => captchaA.value + captchaB.value);
 const captchaValid = computed(() => String(parseInt(captchaInput.value || "NaN", 10)) === String(captchaAnswer.value));
-const captchaStateClass = computed(() => {
-    if (!captchaInput.value) return "bg-gray-100 text-gray-400 border border-gray-200";
-    return captchaValid.value ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200";
+const recaptchaStatusClass = computed(() => {
+    if (recaptchaError.value) return "text-red-600";
+    return recaptchaReady.value ? "text-green-700" : "text-gray-500";
 });
-const captchaIconClass = computed(() => {
-    if (!captchaInput.value) return "mdi mdi-help-circle-outline text-xl";
-    return captchaValid.value ? "mdi mdi-check-bold text-xl" : "mdi mdi-close-thick text-xl";
+const recaptchaIconClass = computed(() => {
+    if (recaptchaError.value) return "mdi mdi-close-circle-outline";
+    return recaptchaReady.value ? "mdi mdi-check-circle-outline" : "mdi mdi-dots-horizontal-circle-outline";
+});
+const recaptchaStatusText = computed(() => {
+    if (recaptchaError.value) return "unavailable";
+    return recaptchaReady.value ? "ready" : "initializing…";
 });
 const canSubmit = computed(() => (
     usernameValid.value &&
@@ -387,13 +373,25 @@ const tryConsumeSso = () => {
     }
 };
 
-// Lifecycle
-onBeforeMount(() => {
-    genCaptcha();
-});
+const checkRecaptchaReady = () => {
+    try {
+        const g = window.grecaptcha?.enterprise || window.grecaptcha;
+        if (g?.ready) {
+            g.ready(() => {
+                recaptchaReady.value = true;
+            });
+        } else {
+            setTimeout(checkRecaptchaReady, 600);
+        }
+    } catch (e) {
+        recaptchaError.value = "not loaded";
+    }
+};
+
 onMounted(() => {
     tryConsumeSso();
     nextTick(() => tryConsumeSso());
+    checkRecaptchaReady();
 });
 </script>
 

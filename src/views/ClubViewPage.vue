@@ -6,6 +6,15 @@ import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue'
 import SectionMain from '@/components/SectionMain.vue'
 import { useClubStore } from '@/stores/club'
 import { useAuthStore } from '@/stores/auth'
+import { useActivityDesignStore } from '@/stores/activityDesign'
+import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
+import { useAnnualPlanStore } from '@/stores/annualPlan'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import listPlugin from '@fullcalendar/list'
+import interactionPlugin from '@fullcalendar/interaction'
+import Badge from '@/components/commons/Badge.vue'
 import {
     mdiAccountGroup,
     mdiCalendar,
@@ -13,11 +22,16 @@ import {
     mdiLinkVariant,
     mdiPhone,
     mdiAccount,
+    mdiRefresh,
 } from '@mdi/js'
 
 const route = useRoute()
 const clubStore = useClubStore()
 const auth = useAuthStore()
+const adStore = useActivityDesignStore()
+const urStore = useUtilizationRequestStore()
+const apStore = useAnnualPlanStore()
+const timeZone = 'Asia/Manila'
 
 const API_ROOT = import.meta.env.VITE_API_ROOT_URL || ''
 
@@ -29,6 +43,12 @@ onMounted(async () => {
         loading.value = true
         try {
             await clubStore.fetchById(clubId.value)
+            // Prefetch club-scoped approved items for calendar
+            await Promise.allSettled([
+                adStore.fetchAll({ status: 'approved', club_id: clubId.value, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
+                urStore.fetchAll({ status: 'approved', club_id: clubId.value, limit: 500, order: 'ASC', sort: 'start_at' }, true),
+                apStore.fetchAll({ status: 'approved', club_id: clubId.value, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
+            ])
         } finally {
             loading.value = false
         }
@@ -156,6 +176,85 @@ const openProfile = (userId) => {
     if (!userId) return
     window.open(`/#/profile/${userId}`, '_self')
 }
+
+// ---------------- Club Calendar (Annual Plans, Activity Designs, Utilizations) ----------------
+const showAD = ref(true)
+const showUR = ref(true)
+const showAP = ref(true)
+
+function parseJSONSafe(s, fb = []) { try { return JSON.parse(s || '[]') } catch { return fb } }
+function colorByType(type) {
+    if (type === 'AD') return { backgroundColor: '#2563eb', borderColor: '#1d4ed8' }
+    if (type === 'UR') return { backgroundColor: '#059669', borderColor: '#047857' }
+    return { backgroundColor: '#d97706', borderColor: '#b45309' }
+}
+
+const events = computed(() => {
+    const list = []
+    if (showAD.value) {
+        for (const r of adStore.items.data || []) {
+            const start = r?.date_of_implementation || r?.approved_at || r?.created_at
+            if (!start) continue
+            const { backgroundColor, borderColor } = colorByType('AD')
+            list.push({ id: `AD-${r.id}`, title: `Activity: ${r.name_of_activity || r.reference_code}`,
+                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code }, backgroundColor, borderColor })
+        }
+    }
+    if (showUR.value) {
+        for (const r of urStore.items.data || []) {
+            const start = r?.start_at || r?.approved_at || r?.created_at
+            const end = r?.end_at || r?.start_at || r?.approved_at
+            if (!start) continue
+            const fac = Array.isArray(r?.facilities) ? r.facilities : parseJSONSafe(r?.facilities)
+            const facTxt = fac?.length ? ` • ${fac.join(', ')}` : ''
+            const act = r?.activity_design?.name_of_activity ? ` • ${r.activity_design.name_of_activity}` : ''
+            const { backgroundColor, borderColor } = colorByType('UR')
+            list.push({ id: `UR-${r.id}`, title: `Utilization${act}${facTxt}`, start, end, allDay: !r?.start_at || !r?.end_at,
+                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac }, backgroundColor, borderColor })
+        }
+    }
+    if (showAP.value) {
+        for (const r of apStore.items.data || []) {
+            const start = r?.approved_at || r?.submitted_at || r?.created_at
+            if (!start) continue
+            const sy = r?.school_year ? ` • SY ${r.school_year}` : ''
+            const { backgroundColor, borderColor } = colorByType('AP')
+            list.push({ id: `AP-${r.id}`, title: `Annual Plan Approved${sy}`, start, allDay: true,
+                extendedProps: { type: 'Annual Plan', ref: r.reference_code }, backgroundColor, borderColor })
+        }
+    }
+    return list
+})
+
+function eventDidMount(info) {
+    const isList = !!info.el.closest('.fc-list')
+    if (!isList) {
+        info.el.classList.add('rounded-md', 'shadow-sm', 'text-white')
+    } else {
+        info.el.classList.remove('text-white')
+        info.el.classList.add('text-gray-900')
+    }
+    const badge = document.createElement('span')
+    badge.textContent = info.event.extendedProps?.type || ''
+    if (isList) {
+        badge.className = 'mr-2 inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded bg-slate-200 text-slate-700'
+        const titleCell = info.el.querySelector('.fc-list-event-title')
+        const link = titleCell?.querySelector('a') || titleCell
+        link?.prepend(badge)
+    } else {
+        badge.className = 'px-1.5 py-0.5 text-[10px] font-semibold rounded mr-1 align-middle bg-white/20 text-white'
+        info.el.prepend(badge)
+    }
+}
+
+const calendarOptions = computed(() => ({
+    plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
+    initialView: 'dayGridMonth',
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
+    height: 'auto', stickyHeaderDates: true, dayMaxEvents: 3, navLinks: true,
+    eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: true },
+    timeZone, events: events.value, eventDidMount,
+}))
 </script>
 
 <template>
@@ -361,6 +460,60 @@ const openProfile = (userId) => {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Club Calendar -->
+                    <div class="rounded-2xl border bg-white shadow-sm">
+                        <div class="border-b px-4 sm:px-6 py-3 flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-gray-800 inline-flex items-center gap-2">
+                                <svg style="width:18px;height:18px" viewBox="0 0 24 24">
+                                    <path :d="mdiCalendar" />
+                                </svg>
+                                Club Calendar
+                            </h3>
+                            <div class="flex items-center gap-2 text-xs">
+                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                    <input type="checkbox" v-model="showAD" class="accent-blue-600">
+                                    <span>Activities</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <input type="checkbox" v-model="showUR" class="accent-emerald-600">
+                                    <span>Utilizations</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                    <input type="checkbox" v-model="showAP" class="accent-amber-600">
+                                    <span>Annual Plans</span>
+                                </label>
+                                <button class="px-2 py-1 bg-white border rounded inline-flex items-center gap-1"
+                                    @click="Promise.allSettled([
+                                        adStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
+                                        urStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'start_at' }, true),
+                                        apStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
+                                    ])">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24"><path :d="mdiRefresh" /></svg>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 sm:p-6">
+                            <div class="w-full rounded-xl overflow-hidden border border-gray-200 bg-white">
+                                <FullCalendar :options="calendarOptions" />
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
+                                <div class="p-3 rounded-xl border bg-white shadow-sm border-blue-200">
+                                    <div class="text-xs uppercase tracking-wide text-blue-600 mb-1">Legend</div>
+                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-blue-600"></span> Activity Design</div>
+                                </div>
+                                <div class="p-3 rounded-xl border bg-white shadow-sm border-emerald-200">
+                                    <div class="text-xs uppercase tracking-wide text-emerald-600 mb-1">Legend</div>
+                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-emerald-600"></span> Utilization</div>
+                                </div>
+                                <div class="p-3 rounded-xl border bg-white shadow-sm border-amber-200">
+                                    <div class="text-xs uppercase tracking-wide text-amber-600 mb-1">Legend</div>
+                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-amber-600"></span> Annual Plan</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right: Club facts -->
@@ -390,7 +543,7 @@ const openProfile = (userId) => {
                             <div class="flex items-center justify-between">
                                 <span>Established</span>
                                 <span class="text-gray-500">{{ establishedAt ? establishedAt.toLocaleDateString() : '—'
-                                }}</span>
+                                    }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span>Website</span>

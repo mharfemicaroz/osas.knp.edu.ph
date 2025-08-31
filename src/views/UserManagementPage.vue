@@ -52,6 +52,11 @@ const fetchAll = async (patch = {}, force = true) => {
         ;['q', 'role', 'is_active'].forEach((k) => {
             if (params[k] === '' || params[k] == null) delete params[k]
         })
+    // Map q -> username to match backend API
+    if (params.q) {
+        params.username = params.q
+        delete params.q
+    }
     await store.fetchAll(params, force)
 }
 
@@ -113,6 +118,8 @@ const form = ref({
     bio: '',
     avatar: null,
     cover: null,
+    password: '',
+    confirm_password: '',
 })
 const formErrors = ref({})
 
@@ -130,6 +137,8 @@ const openCreate = () => {
         bio: '',
         avatar: null,
         cover: null,
+        password: '',
+        confirm_password: '',
     }
     formErrors.value = {}
     modalVisible.value = true
@@ -151,6 +160,8 @@ const openView = async (row) => {
         bio: u.bio || '',
         avatar: u.avatar || null,
         cover: u.cover || null,
+        password: '',
+        confirm_password: '',
     }
     formErrors.value = {}
     modalVisible.value = true
@@ -220,8 +231,10 @@ const onSubmit = async () => {
     }
 
     if (modalMode.value === 'create') {
+        payload.password = form.value.password
         await store.create(payload)
     } else {
+        if (form.value.password) payload.password = form.value.password
         await store.updateById(form.value.id, payload)
     }
 
@@ -410,6 +423,37 @@ const loadClubs = async (userId) => {
                         :disabled="modalMode === 'view'" />
                     <p v-if="formErrors.email" class="text-red-600 text-[11px] mt-1">{{ formErrors.email }}</p>
                 </div>
+
+                <!-- Passwords -->
+                <template v-if="modalMode !== 'view'">
+                    <div class="md:col-span-3" v-if="modalMode === 'create'">
+                        <label class="block mb-1">Password <span class="text-red-500">*</span></label>
+                        <input v-model="form.password" type="password" autocomplete="new-password"
+                            class="w-full border rounded px-2.5 py-2" />
+                        <p v-if="formErrors.password" class="text-red-600 text-[11px] mt-1">{{ formErrors.password }}</p>
+                    </div>
+                    <div class="md:col-span-3" v-if="modalMode === 'create'">
+                        <label class="block mb-1">Confirm Password <span class="text-red-500">*</span></label>
+                        <input v-model="form.confirm_password" type="password" autocomplete="new-password"
+                            class="w-full border rounded px-2.5 py-2" />
+                        <p v-if="formErrors.confirm_password" class="text-red-600 text-[11px] mt-1">{{
+                            formErrors.confirm_password }}</p>
+                    </div>
+
+                    <div class="md:col-span-3" v-if="modalMode === 'edit'">
+                        <label class="block mb-1">New Password (optional)</label>
+                        <input v-model="form.password" type="password" autocomplete="new-password"
+                            class="w-full border rounded px-2.5 py-2" placeholder="Leave blank to keep current" />
+                        <p v-if="formErrors.password" class="text-red-600 text-[11px] mt-1">{{ formErrors.password }}</p>
+                    </div>
+                    <div class="md:col-span-3" v-if="modalMode === 'edit' && form.password">
+                        <label class="block mb-1">Confirm New Password</label>
+                        <input v-model="form.confirm_password" type="password" autocomplete="new-password"
+                            class="w-full border rounded px-2.5 py-2" />
+                        <p v-if="formErrors.confirm_password" class="text-red-600 text-[11px] mt-1">{{
+                            formErrors.confirm_password }}</p>
+                    </div>
+                </template>
 
                 <div>
                     <label class="block mb-1">First name</label>

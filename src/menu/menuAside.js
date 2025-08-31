@@ -44,6 +44,12 @@ const ADMIN_MENU = [
     roles: ["admin", "student_officer"], // allow student officers
   },
   {
+    to: "/memberships",
+    icon: mdiAccountGroup,
+    label: "Memberships",
+    roles: ["admin"],
+  },
+  {
     to: "/activity-designs",
     icon: mdiPencil,
     label: "Activity Designs",
@@ -60,6 +66,12 @@ const ADMIN_MENU = [
     icon: mdiCashCheck,
     label: "Liquidation Forms",
     roles: ["admin", "student_officer"],
+  },
+  {
+    to: "/workflows",
+    icon: mdiFileDocument,
+    label: "Workflows",
+    roles: ["admin"],
   },
   {
     to: "/user-mgt",
