@@ -2,6 +2,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import Swal from 'sweetalert2'
+import { compressForAvatar, compressForCover } from '@/utils/imageCompression'
 
 import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue'
 import SectionMain from '@/components/SectionMain.vue'
@@ -265,14 +266,16 @@ const confirmDelete = async (row) => {
 const onPickAvatar = async (e) => {
     const file = e?.target?.files?.[0]
     if (!file || !form.value.id) return
-    await store.uploadAvatar(form.value.id, file)
+    const compressed = await compressForAvatar(file)
+    await store.uploadAvatar(form.value.id, compressed)
     await store.fetchById(form.value.id)
     form.value.avatar = store.selectedUser?.avatar || form.value.avatar
 }
 const onPickCover = async (e) => {
     const file = e?.target?.files?.[0]
     if (!file || !form.value.id) return
-    await store.uploadCover(form.value.id, file)
+    const compressed = await compressForCover(file)
+    await store.uploadCover(form.value.id, compressed)
     await store.fetchById(form.value.id)
     form.value.cover = store.selectedUser?.cover || form.value.cover
 }
@@ -346,7 +349,7 @@ const loadClubs = async (userId) => {
                 @query-change="handleQueryChange">
                 <template #cell-avatar="{ value }">
                     <div class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 border">
-                        <img v-if="value" :src="value" alt="avatar" class="w-full h-full object-cover" />
+                        <img v-if="value" :src="value" alt="avatar" class="w-full h-full object-cover" loading="lazy" />
                         <div v-else class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">N/A
                         </div>
                     </div>
@@ -517,7 +520,7 @@ const loadClubs = async (userId) => {
                         </label>
                         <div class="flex items-center gap-3">
                             <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border">
-                                <img v-if="form.avatar" :src="form.avatar" class="w-full h-full object-cover" />
+                                <img v-if="form.avatar" :src="form.avatar" class="w-full h-full object-cover" loading="lazy" />
                                 <div v-else
                                     class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">N/A
                                 </div>
@@ -536,7 +539,7 @@ const loadClubs = async (userId) => {
                         </label>
                         <div class="flex items-center gap-3">
                             <div class="w-28 h-16 rounded-lg overflow-hidden bg-gray-100 border">
-                                <img v-if="form.cover" :src="form.cover" class="w-full h-full object-cover" />
+                                <img v-if="form.cover" :src="form.cover" class="w-full h-full object-cover" loading="lazy" />
                                 <div v-else
                                     class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">N/A
                                 </div>

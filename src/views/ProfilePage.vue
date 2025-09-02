@@ -3,6 +3,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Swal from 'sweetalert2'
+import { compressForAvatar, compressForCover } from '@/utils/imageCompression'
 
 import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue'
 import SectionMain from '@/components/SectionMain.vue'
@@ -136,7 +137,8 @@ const handleAvatarChange = async (e) => {
     if (!file || !isSelf.value || !targetUserId.value) return
     uploadingAvatar.value = true
     try {
-        await userStore.uploadAvatar(targetUserId.value, file)
+        const compressed = await compressForAvatar(file)
+        await userStore.uploadAvatar(targetUserId.value, compressed)
         Swal.fire('Updated', 'Profile photo updated!', 'success')
     } catch (err) {
         Swal.fire('Upload failed', userStore.error || 'Could not upload avatar', 'error')
@@ -151,7 +153,8 @@ const handleCoverChange = async (e) => {
     if (!file || !isSelf.value || !targetUserId.value) return
     uploadingCover.value = true
     try {
-        await userStore.uploadCover(targetUserId.value, file)
+        const compressed = await compressForCover(file)
+        await userStore.uploadCover(targetUserId.value, compressed)
         Swal.fire('Updated', 'Cover photo updated!', 'success')
     } catch (err) {
         Swal.fire('Upload failed', userStore.error || 'Could not upload cover', 'error')
@@ -243,7 +246,7 @@ const openClub = (clubId) => {
             <div class="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
                 <!-- Cover -->
                 <div class="relative h-48 sm:h-64 w-full bg-gray-100 group overflow-hidden rounded-t-2xl">
-                    <img v-if="coverUrl" :src="coverUrl" alt="Cover" class="h-full w-full object-cover" />
+                    <img v-if="coverUrl" :src="coverUrl" alt="Cover" class="h-full w-full object-cover" loading="lazy" />
                     <div v-else
                         class="flex h-full w-full items-center justify-center bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-500">
                         <span class="text-sm">No cover photo</span>
@@ -273,7 +276,7 @@ const openClub = (clubId) => {
                         <!-- Avatar -->
                         <div
                             class="relative h-24 w-24 sm:h-28 sm:w-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow">
-                            <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="h-full w-full object-cover" />
+                            <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="h-full w-full object-cover" loading="lazy" />
                             <div v-else
                                 class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-600 font-semibold">
                                 {{ initials(fullName) }}
