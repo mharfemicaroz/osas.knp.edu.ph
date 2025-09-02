@@ -228,12 +228,31 @@ const events = computed(() => {
 
 function eventDidMount(info) {
     const isList = !!info.el.closest('.fc-list')
+
+    // Determine contrast based on event background color
+    const bg = (info.event.backgroundColor || '').trim().toLowerCase()
+    const hex = bg.startsWith('#') ? bg.slice(1) : null
+    let useLightText = true
+    if (hex && (hex.length === 6 || hex.length === 3)) {
+        const hx = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
+        const r = parseInt(hx.slice(0, 2), 16)
+        const g = parseInt(hx.slice(2, 4), 16)
+        const b = parseInt(hx.slice(4, 6), 16)
+        // Perceived luminance
+        const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        useLightText = lum < 0.6
+    }
+
     if (!isList) {
-        info.el.classList.add('rounded-md', 'shadow-sm', 'text-white')
+        info.el.classList.add('rounded-md', 'shadow-sm')
+        info.el.classList.remove('text-white', 'text-gray-900')
+        info.el.classList.add(useLightText ? 'text-white' : 'text-gray-900')
     } else {
         info.el.classList.remove('text-white')
         info.el.classList.add('text-gray-900')
     }
+
+    // Badge for type
     const badge = document.createElement('span')
     badge.textContent = info.event.extendedProps?.type || ''
     if (isList) {
@@ -242,7 +261,7 @@ function eventDidMount(info) {
         const link = titleCell?.querySelector('a') || titleCell
         link?.prepend(badge)
     } else {
-        badge.className = 'px-1.5 py-0.5 text-[10px] font-semibold rounded mr-1 align-middle bg-white/20 text-white'
+        badge.className = `px-1.5 py-0.5 text-[10px] font-semibold rounded mr-1 align-middle ${useLightText ? 'bg-white/20 text-white' : 'bg-black/10 text-gray-900'}`
         info.el.prepend(badge)
     }
 }

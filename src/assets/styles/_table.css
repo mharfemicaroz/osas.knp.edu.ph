@@ -47,3 +47,46 @@
     @apply font-semibold pr-3 text-left lg:hidden;
   }
 }
+
+/* Prevent responsive table styles from affecting FullCalendar's internal tables */
+@layer base {
+  .fc table,
+  .fc thead,
+  .fc tbody,
+  .fc tfoot,
+  .fc tr,
+  .fc th,
+  .fc td {
+    /* Reset layout altered by the responsive table rules above */
+    display: revert !important;
+  }
+
+  .fc thead {
+    /* Ensure headers are visible on small screens */
+    display: table-header-group !important;
+  }
+
+  .fc tbody {
+    display: table-row-group !important;
+  }
+
+  .fc tfoot {
+    display: table-footer-group !important;
+  }
+
+  .fc tr {
+    position: static !important;
+    border: 0 !important;
+  }
+
+  .fc th,
+  .fc td {
+    padding: 0 !important;
+    text-align: left !important;
+    border: 0 !important;
+  }
+
+  .fc td:before {
+    content: none !important;
+  }
+}
