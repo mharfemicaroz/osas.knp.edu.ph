@@ -40,6 +40,7 @@ const fetchAll = async (patch = {}, force = true) => {
 
 onMounted(async () => {
   await fetchAll({ page: 1, limit: 10 }, true)
+  await preloadClubs()
 })
 
 const dataWrap = computed(() => ({
@@ -59,6 +60,7 @@ const columns = [
     formatter: (v, row) => `${row.first_name || ''} ${row.last_name || ''}`.trim() || '—'
   },
   { key: 'email', label: 'Email', sortable: true, minWidth: 220 },
+  { key: 'has_club', label: 'Club', sortable: false, width: 90 },
   { key: 'role', label: 'Role', sortable: true, width: 120 },
   { key: 'is_active', label: 'Active', sortable: true, width: 100 },
 ]
@@ -86,7 +88,7 @@ const openManage = async (row) => {
 const preloadClubs = async () => {
   try {
     clubsLoading.value = true
-    await clubStore.fetchAll({ page: 1, limit: 500 }, true)
+    await clubStore.fetchAll({ page: 1, limit: 500, filters: { include: 'users' } }, true)
   } finally {
     clubsLoading.value = false
   }
@@ -113,6 +115,17 @@ const loadUserClubs = async (userId) => {
 }
 
 const currentClubIds = computed(() => new Set((userClubs.value || []).map(c => c.id)))
+// Build a set of user IDs that belong to any club (from preloaded clubs w/ users)
+const memberUserIds = computed(() => {
+  const set = new Set()
+  const list = clubStore.clubs?.data || []
+  for (const c of list) {
+    if (!Array.isArray(c.users)) continue
+    for (const u of c.users) if (u?.id != null) set.add(u.id)
+  }
+  return set
+})
+const userHasClub = (uid) => memberUserIds.value.has(uid)
 const availableClubs = computed(() => {
   const arr = (clubStore.clubs.data || []).filter(c => !currentClubIds.value.has(c.id))
   return arr.slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
@@ -241,6 +254,10 @@ const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === '
         </div>
 
         <BaseTable :columns="columns" :data="dataWrap" :loading="userStore.isLoading" @query-change="handleQueryChange">
+          <template #cell-has_club="{ row }">
+            <Badge :text="userHasClub(row.id) ? 'Has Club' : 'None'"
+                   :tone="userHasClub(row.id) ? 'emerald' : 'zinc'" />
+          </template>
           <template #cell-is_active="{ value }">
             <Badge :text="value ? 'Active' : 'Inactive'" :tone="statusTone(value)" />
           </template>

@@ -42,13 +42,20 @@ const authUserId = computed(() => currentUser.value?.id || null)
 const targetUserId = computed(() => routeUserId.value || authUserId.value)
 const isSelf = computed(() => !!authUserId.value && authUserId.value === targetUserId.value)
 
+// Page loading state to avoid showing fallback user while fetching route profile
+const pageLoading = ref(false)
+
 /* Load full user into store on mount + when :id changes */
 const loadUser = async () => {
-    if (targetUserId.value) {
+    if (!targetUserId.value) return
+    pageLoading.value = true
+    try {
         await userStore.fetchById(targetUserId.value)
+        seedFormFromStore()
+        await loadClubsForUser()
+    } finally {
+        pageLoading.value = false
     }
-    seedFormFromStore()
-    await loadClubsForUser()
 }
 
 onMounted(loadUser)
@@ -57,7 +64,14 @@ watch(() => routeUserId.value, async () => {
 })
 
 /* Single source of truth for profile UI */
-const storeUser = computed(() => userStore.selectedUser || currentUser.value || {})
+// For route profile, only show the fetched user when it matches the route id
+const storeUser = computed(() => {
+    if (routeUserId.value) {
+        const su = userStore.selectedUser
+        return su && su.id === routeUserId.value ? su : null
+    }
+    return userStore.selectedUser || currentUser.value || {}
+})
 
 /* Computed: avatar/cover/bio straight from store */
 const avatarUrl = computed(() => storeUser.value?.avatar || '')
@@ -74,7 +88,7 @@ const profileForm = ref({
 
 /* Keep form seeded from the store (initial + when store changes) */
 const seedFormFromStore = () => {
-    const src = storeUser.value || {}
+    const src = routeUserId.value ? (userStore.selectedUser && userStore.selectedUser.id === routeUserId.value ? userStore.selectedUser : {}) : (storeUser.value || {})
     Object.assign(profileForm.value, {
         username: src.username || '',
         first_name: src.first_name || '',
@@ -242,6 +256,11 @@ const openClub = (clubId) => {
 <template>
     <LayoutAuthenticated>
         <SectionMain>
+            <!-- Loading guard -->
+            <div v-if="pageLoading || !storeUser" class="rounded-2xl border bg-white p-6 text-sm text-gray-500">
+                Loading profile…
+            </div>
+            <template v-else>
             <!-- Cover + Avatar -->
             <div class="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
                 <!-- Cover -->
@@ -497,6 +516,7 @@ const openClub = (clubId) => {
                     </div>
                 </div>
             </div>
+            </template>
         </SectionMain>
     </LayoutAuthenticated>
 </template>
