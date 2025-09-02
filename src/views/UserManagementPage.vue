@@ -1,6 +1,7 @@
 <!-- src/views/UserManagementPage.vue -->
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { compressForAvatar, compressForCover } from '@/utils/imageCompression'
 
@@ -30,6 +31,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const store = useUserStore()
 const auth = useAuthStore()
+const router = useRouter()
 
 /* ---------- QUERY / FETCH ---------- */
 const lastQuery = ref({
@@ -294,6 +296,12 @@ const loadClubs = async (userId) => {
         clubsLoading.value = false
     }
 }
+
+/* ---------- OPEN PROFILE ---------- */
+const openProfile = (row) => {
+    if (!row?.id) return
+    router.push({ name: 'profile', params: { id: row.id } })
+}
 </script>
 
 <template>
@@ -370,6 +378,11 @@ const loadClubs = async (userId) => {
 
                 <template #cell-actions="{ row }">
                     <div class="flex items-center gap-1">
+                        <button
+                            class="px-2 py-1 text-[12px] rounded bg-blue-600 text-white inline-flex items-center gap-1"
+                            @click="openProfile(row)" title="Open profile">
+                            Open
+                        </button>
                         <button
                             class="px-2 py-1 text-[12px] rounded bg-gray-100 hover:bg-gray-200 inline-flex items-center gap-1"
                             @click="openView(row)" title="View">
