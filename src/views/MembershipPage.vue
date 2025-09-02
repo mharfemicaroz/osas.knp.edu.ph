@@ -104,7 +104,7 @@ const loadUserClubs = async (userId) => {
     }))
     const map = {}
     for (const c of userClubs.value) {
-      map[c.id] = { role: c.membership?.role || 'member', status: c.membership?.status || 'active' }
+      map[c.id] = { role: c.membership?.role || 'member', status: c.membership?.status || '' }
     }
     baseline.value = map
   } finally {
@@ -113,7 +113,10 @@ const loadUserClubs = async (userId) => {
 }
 
 const currentClubIds = computed(() => new Set((userClubs.value || []).map(c => c.id)))
-const availableClubs = computed(() => (clubStore.clubs.data || []).filter(c => !currentClubIds.value.has(c.id)))
+const availableClubs = computed(() => {
+  const arr = (clubStore.clubs.data || []).filter(c => !currentClubIds.value.has(c.id))
+  return arr.slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+})
 
 const MEMBER_ROLES = ['member','officer','bod','business manager','pio','treasurer','secretary','vice-president','president']
 const MEMBER_STATUSES = ['pending','active','inactive']
