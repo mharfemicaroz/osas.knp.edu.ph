@@ -110,7 +110,7 @@ function eventDidMount(info) {
 
     // base styling for grid views
     if (!isList) {
-        info.el.classList.add('rounded-md', 'shadow-sm', 'text-white')
+        info.el.classList.add('rounded-md', 'shadow-sm', 'text-dark')
     } else {
         info.el.classList.remove('text-white')
         info.el.classList.add('text-gray-900')

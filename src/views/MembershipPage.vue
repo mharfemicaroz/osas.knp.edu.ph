@@ -8,6 +8,7 @@ import BaseTable from '@/components/BaseTable.vue'
 import BaseButton from '@/components/commons/BaseButton.vue'
 import NotificationBar from '@/components/NotificationBar.vue'
 import Badge from '@/components/commons/Badge.vue'
+import ToasterComponent from '@/components/ToasterComponent.vue'
 
 import { useUserStore } from '@/stores/user'
 import { useClubStore } from '@/stores/club'
@@ -72,6 +73,8 @@ const userClubsLocal = ref([]) // editable copy
 const baseline = ref({}) // { [clubId]: { role, status } }
 const clubsLoading = ref(false)
 const addClubId = ref('')
+const updating = ref({}) // { [clubId]: boolean } to block concurrent updates
+const toast = ref(null)
 
 const openManage = async (row) => {
   selectedUser.value = row
@@ -141,28 +144,54 @@ const removeFromClub = async (cid) => {
   }
 }
 
-const saveMembership = async (clubId) => {
+// Optimistic updates: apply immediately, sync in background, revert on error
+const onChangeRole = async (clubId) => {
   const uid = selectedUser.value?.id
   if (!uid) return
   const current = userClubsLocal.value.find(c => c.id === clubId)
   if (!current) return
-  const prev = baseline.value[clubId] || {}
-  const ops = []
-  const nextRole = String(current.membership?.role || '').toLowerCase()
-  const nextStatus = String(current.membership?.status || '').toLowerCase()
-  if (nextRole && nextRole !== String(prev.role || '').toLowerCase()) {
-    ops.push(clubStore.updateMemberRole(clubId, uid, nextRole))
-  }
-  if (nextStatus && nextStatus !== String(prev.status || '').toLowerCase()) {
-    ops.push(clubStore.updateMemberStatus(clubId, uid, nextStatus))
-  }
-  if (!ops.length) return
+  const newRole = String(current.membership?.role || '').toLowerCase()
+  const prevRole = String(baseline.value[clubId]?.role || '').toLowerCase()
+  if (!newRole || newRole === prevRole) return
+  updating.value[clubId] = true
   try {
-    clubsLoading.value = true
-    await Promise.all(ops)
-    await loadUserClubs(uid)
+    await clubStore.updateMemberRole(clubId, uid, newRole)
+    baseline.value[clubId] = {
+      ...(baseline.value[clubId] || {}),
+      role: newRole,
+    }
+    toast.value?.showToast?.('success', 'Role updated')
+  } catch (e) {
+    // revert UI
+    current.membership.role = prevRole || 'member'
+    toast.value?.showToast?.('warning', e?.message || 'Failed to update role')
   } finally {
-    clubsLoading.value = false
+    updating.value[clubId] = false
+  }
+}
+
+const onChangeStatus = async (clubId) => {
+  const uid = selectedUser.value?.id
+  if (!uid) return
+  const current = userClubsLocal.value.find(c => c.id === clubId)
+  if (!current) return
+  const newStatus = String(current.membership?.status || '').toLowerCase()
+  const prevStatus = String(baseline.value[clubId]?.status || '').toLowerCase()
+  if (!newStatus || newStatus === prevStatus) return
+  updating.value[clubId] = true
+  try {
+    await clubStore.updateMemberStatus(clubId, uid, newStatus)
+    baseline.value[clubId] = {
+      ...(baseline.value[clubId] || {}),
+      status: newStatus,
+    }
+    toast.value?.showToast?.('success', 'Status updated')
+  } catch (e) {
+    // revert UI
+    current.membership.status = prevStatus || 'active'
+    toast.value?.showToast?.('warning', e?.message || 'Failed to update status')
+  } finally {
+    updating.value[clubId] = false
   }
 }
 
@@ -259,14 +288,13 @@ const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === '
               </div>
               <div class="flex items-center gap-2 flex-wrap">
                 <div class="text-xs text-gray-600">Role</div>
-                <select v-model="c.membership.role" class="border rounded px-2 py-1 text-sm">
+                <select v-model="c.membership.role" class="border rounded px-2 py-1 text-sm" :disabled="clubsLoading || updating[c.id]" @change="onChangeRole(c.id)">
                   <option v-for="r in MEMBER_ROLES" :key="r" :value="r">{{ r }}</option>
                 </select>
                 <div class="text-xs text-gray-600 ml-2">Status</div>
-                <select v-model="c.membership.status" class="border rounded px-2 py-1 text-sm">
+                <select v-model="c.membership.status" class="border rounded px-2 py-1 text-sm" :disabled="clubsLoading || updating[c.id]" @change="onChangeStatus(c.id)">
                   <option v-for="s in MEMBER_STATUSES" :key="s" :value="s">{{ s }}</option>
                 </select>
-                <button class="px-2 py-1 text-[12px] rounded bg-blue-600 text-white" @click="saveMembership(c.id)">Save</button>
                 <button class="px-2 py-1 text-[12px] rounded bg-rose-100 hover:bg-rose-200 inline-flex items-center gap-1" @click="removeFromClub(c.id)">
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24"><path :d="mdiClose" /></svg>
                   Remove
@@ -278,4 +306,5 @@ const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === '
       </div>
     </div>
   </div>
+  <ToasterComponent ref="toast" />
 </template>
