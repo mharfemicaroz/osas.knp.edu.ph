@@ -20,6 +20,7 @@ import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
 import { useLiquidationFundStore } from '@/stores/liquidationFund'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
+import { useGrievanceStore } from '@/stores/grievance'
 
 /* Icons */
 import {
@@ -56,6 +57,7 @@ const adStore = useActivityDesignStore()
 const apStore = useAnnualPlanStore()
 const lfStore = useLiquidationFundStore()
 const urStore = useUtilizationRequestStore()
+const grStore = useGrievanceStore()
 
 /* Local loading while bootstrapping */
 const bootLoading = ref(true)
@@ -73,6 +75,7 @@ onMounted(async () => {
             apStore.fetchAll({ page: 1, limit: 100, status: 'approved' }, true),
             lfStore.fetchAll({ page: 1, limit: 100 }, true),
             urStore.fetchAll({ page: 1, limit: 100 }, true),
+            grStore.fetchAll({ page: 1, limit: 100 }, true),
         ])
     } finally {
         bootLoading.value = false
@@ -88,6 +91,7 @@ const activities = computed(() => Array.isArray(adStore.items?.data) ? adStore.i
 const annualPlans = computed(() => Array.isArray(apStore.items?.data) ? apStore.items.data : [])
 const liquidations = computed(() => Array.isArray(lfStore.items?.data) ? lfStore.items.data : [])
 const utilizations = computed(() => Array.isArray(urStore.items?.data) ? urStore.items.data : [])
+const grievances = computed(() => Array.isArray(grStore.items?.data) ? grStore.items.data : [])
 
 /* ---------- Helpers ---------- */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -255,6 +259,7 @@ const avgProposedBudget = computed(() =>
 const linkedActivities = computed(() => filteredActivities.value.filter(a => a.annual_plan_id != null))
 const linkedCount = computed(() => linkedActivities.value.length)
 const linkedPct = computed(() => pct(linkedCount.value, totalActivities.value))
+const approvedPlansCount = computed(() => annualPlans.value.length)
 
 /* Liquidation KPIs */
 const totalLiquidations = computed(() => liquidations.value.length)
@@ -306,6 +311,184 @@ const avgEventDurationHrs = computed(() => {
 const distinctClubsActive = computed(() => {
     const set = new Set(filteredActivities.value.map(a => a.club_id))
     return set.size
+})
+
+/* Users and Clubs membership coverage */
+const memberUserIds = computed(() => {
+    const set = new Set()
+    for (const c of clubs.value) {
+        if (Array.isArray(c.users)) for (const u of c.users) if (u?.id != null) set.add(u.id)
+    }
+    return set
+})
+const usersWithoutClub = computed(() => {
+    const total = totalUsers.value || 0
+    const covered = memberUserIds.value.size
+    return Math.max(0, total - covered)
+})
+const clubsWithoutMembers = computed(() => clubs.value.filter(c => !Array.isArray(c.users) || c.users.length === 0).length)
+const avgActivitiesPerClub = computed(() => {
+    const denom = totalClubs.value || clubs.value.length || 1
+    return (filteredActivities.value.length / denom)
+})
+
+/* Users by role (donut) */
+const pieUsersByRole = computed(() => {
+    const map = {}
+    for (const u of users.value) {
+        const r = String(u.role || 'unknown')
+        map[r] = (map[r] || 0) + 1
+    }
+    const labels = Object.keys(map)
+    return {
+        labels,
+        datasets: [{
+            data: labels.map(l => map[l]),
+            backgroundColor: labels.map((_, i) => pick(i)),
+            borderColor: labels.map(() => 'white'),
+            borderWidth: 2,
+        }]
+    }
+})
+
+/* Top clubs by members */
+const barTopClubsByMembers = computed(() => {
+    const pairs = clubs.value.map(c => ({ name: c.name || `Club #${c.id}`, count: Array.isArray(c.users) ? c.users.length : 0 }))
+        .sort((a, b) => b.count - a.count).slice(0, 10)
+    const labels = pairs.map(p => p.name)
+    const data = pairs.map(p => p.count)
+    return {
+        labels,
+        datasets: [{
+            label: '# Members', data,
+            backgroundColor: labels.map((_, i) => pickSoft(i)),
+            borderColor: labels.map((_, i) => pick(i)),
+            borderWidth: 1.5
+        }]
+    }
+})
+
+/* Liquidations filed over last 12 months */
+const lineLiquidationsFiled = computed(() => {
+    const now = new Date()
+    const buckets = []
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        buckets.push({ key: `${d.getFullYear()}-${d.getMonth()}`, y: d.getFullYear(), m: d.getMonth(), v: 0 })
+    }
+    const idx = new Map(buckets.map(b => [b.key, b]))
+    for (const l of liquidations.value) {
+        const d = toDate(l.date_filed || l.created_at)
+        if (!d) continue
+        const k = `${d.getFullYear()}-${d.getMonth()}`
+        if (idx.has(k)) idx.get(k).v++
+    }
+    const labels = buckets.map(b => `${MONTHS[b.m]} ${String(b.y).slice(-2)}`)
+    const data = buckets.map(b => b.v)
+    return {
+        labels,
+        datasets: [{
+            label: 'Liquidations filed', data,
+            borderColor: colorSet.emerald,
+            backgroundColor: colorSet.emeraldSoft,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            tension: 0.3,
+            fill: true,
+        }]
+    }
+})
+
+/* Utilizations over last 12 months */
+const lineUtilizationsFiled = computed(() => {
+    const now = new Date()
+    const buckets = []
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        buckets.push({ key: `${d.getFullYear()}-${d.getMonth()}`, y: d.getFullYear(), m: d.getMonth(), v: 0 })
+    }
+    const idx = new Map(buckets.map(b => [b.key, b]))
+    for (const u of utilizations.value) {
+        const d = toDate(u.created_at)
+        if (!d) continue
+        const k = `${d.getFullYear()}-${d.getMonth()}`
+        if (idx.has(k)) idx.get(k).v++
+    }
+    const labels = buckets.map(b => `${MONTHS[b.m]} ${String(b.y).slice(-2)}`)
+    const data = buckets.map(b => b.v)
+    return {
+        labels,
+        datasets: [{
+            label: 'Utilization requests', data,
+            borderColor: colorSet.blue,
+            backgroundColor: colorSet.blueSoft,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            tension: 0.3,
+            fill: true,
+        }]
+    }
+})
+
+/* Grievances KPIs + charts */
+const totalGrievances = computed(() => grievances.value.length)
+const grievancesByStatusMap = computed(() => {
+    const map = {}
+    for (const g of grievances.value) {
+        const s = String(g.status || 'unknown').toLowerCase()
+        map[s] = (map[s] || 0) + 1
+    }
+    return map
+})
+const openGrievances = computed(() => {
+    const map = grievancesByStatusMap.value
+    const resolved = (map['resolved'] || 0) + (map['closed'] || 0)
+    const total = totalGrievances.value
+    return Math.max(0, total - resolved)
+})
+const pieGrievancesByStatus = computed(() => {
+    const labels = Object.keys(grievancesByStatusMap.value)
+    return {
+        labels,
+        datasets: [{
+            data: labels.map(l => grievancesByStatusMap.value[l]),
+            backgroundColor: labels.map((_, i) => pick(i)),
+            borderColor: labels.map(() => 'white'),
+            borderWidth: 2,
+        }]
+    }
+})
+const lineGrievancesFiled = computed(() => {
+    const now = new Date()
+    const buckets = []
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        buckets.push({ key: `${d.getFullYear()}-${d.getMonth()}`, y: d.getFullYear(), m: d.getMonth(), v: 0 })
+    }
+    const idx = new Map(buckets.map(b => [b.key, b]))
+    for (const g of grievances.value) {
+        const d = toDate(g.created_at)
+        if (!d) continue
+        const k = `${d.getFullYear()}-${d.getMonth()}`
+        if (idx.has(k)) idx.get(k).v++
+    }
+    const labels = buckets.map(b => `${MONTHS[b.m]} ${String(b.y).slice(-2)}`)
+    const data = buckets.map(b => b.v)
+    return {
+        labels,
+        datasets: [{
+            label: 'Grievances filed', data,
+            borderColor: colorSet.rose,
+            backgroundColor: colorSet.roseSoft,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            tension: 0.3,
+            fill: true,
+        }]
+    }
 })
 
 /* ---------- Drill-down helpers ---------- */
@@ -552,7 +735,7 @@ const lineActivitiesFiledOverTime = computed(() => {
 const anyLoading = computed(() =>
     bootLoading.value ||
     clubStore.isLoading || docStore.isLoading || userStore.isLoading ||
-    adStore.isLoading || apStore.isLoading || lfStore.isLoading || urStore.isLoading
+    adStore.isLoading || apStore.isLoading || lfStore.isLoading || urStore.isLoading || grStore.isLoading
 )
 </script>
 
@@ -744,6 +927,18 @@ const anyLoading = computed(() =>
                     <div class="mt-1 text-xs text-gray-500">Share: {{ linkedPct }}</div>
                 </div>
 
+                <!-- Annual Plans -->
+                <div class="rounded-2xl border bg-white shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-500">Approved Annual Plans</div>
+                        <svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24">
+                            <path :d="mdiCheckCircle" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-2xl font-semibold text-gray-900">{{ fmtInt(approvedPlansCount) }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Loaded items</div>
+                </div>
+
                 <!-- Liquidation KPIs -->
                 <div class="rounded-2xl border bg-white shadow-sm p-4">
                     <div class="flex items-center justify-between">
@@ -806,6 +1001,54 @@ const anyLoading = computed(() =>
                     <div class="mt-1 text-xs text-gray-500">Schedule overlaps</div>
                 </div>
 
+                <!-- Users without clubs -->
+                <div class="rounded-2xl border bg-white shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-500">Users Without Clubs</div>
+                        <svg class="w-5 h-5 text-slate-600" viewBox="0 0 24 24">
+                            <path :d="mdiAccountGroup" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-2xl font-semibold text-gray-900">{{ fmtInt(usersWithoutClub) }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Out of {{ fmtInt(totalUsers) }} users</div>
+                </div>
+
+                <!-- Clubs without members -->
+                <div class="rounded-2xl border bg-white shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-500">Clubs Without Members</div>
+                        <svg class="w-5 h-5 text-amber-600" viewBox="0 0 24 24">
+                            <path :d="mdiAccountGroup" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-2xl font-semibold text-gray-900">{{ fmtInt(clubsWithoutMembers) }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Total clubs: {{ fmtInt(totalClubs) }}</div>
+                </div>
+
+                <!-- Average activities per club -->
+                <div class="rounded-2xl border bg-white shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-500">Avg Activities / Club</div>
+                        <svg class="w-5 h-5 text-indigo-600" viewBox="0 0 24 24">
+                            <path :d="mdiChartLine" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-2xl font-semibold text-gray-900">{{ (avgActivitiesPerClub || 0).toFixed(2) }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Based on current filter</div>
+                </div>
+
+                <!-- Grievances -->
+                <div class="rounded-2xl border bg-white shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-500">Grievances Filed</div>
+                        <svg class="w-5 h-5 text-rose-600" viewBox="0 0 24 24">
+                            <path :d="mdiAlertCircle" />
+                        </svg>
+                    </div>
+                    <div class="mt-2 text-2xl font-semibold text-gray-900">{{ fmtInt(totalGrievances) }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Open: {{ fmtInt(openGrievances) }}</div>
+                </div>
+
                 <!-- SLA + Distinct clubs -->
                 <div class="rounded-2xl border bg-white shadow-sm p-4">
                     <div class="flex items-center justify-between">
@@ -833,6 +1076,39 @@ const anyLoading = computed(() =>
 
             <!-- Sections -->
             <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <!-- USERS: by role -->
+                <div class="rounded-2xl border bg-white shadow-sm">
+                    <div class="px-4 py-3 border-b flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-slate-600" viewBox="0 0 24 24">
+                                <path :d="mdiChartDonut" />
+                            </svg>
+                            Users by Role
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="h-72">
+                            <DoughnutChart :data="pieUsersByRole" :loading="anyLoading" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLUBS: by members -->
+                <div class="rounded-2xl border bg-white shadow-sm xl:col-span-2">
+                    <div class="px-4 py-3 border-b flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24">
+                                <path :d="mdiChartBar" />
+                            </svg>
+                            Top Clubs by # of Members
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div>
+                            <BarChart :data="barTopClubsByMembers" :loading="anyLoading" :horizontal="true" />
+                        </div>
+                    </div>
+                </div>
                 <!-- ACTIVITIES: pies -->
                 <div class="rounded-2xl border bg-white shadow-sm">
                     <div class="px-4 py-3 border-b flex items-center justify-between">
@@ -895,6 +1171,46 @@ const anyLoading = computed(() =>
                     <div class="p-4">
                         <div>
                             <BarChart :data="barTopClubsByActivities" :loading="anyLoading" :horizontal="true" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TRENDS: liquidations / utilization / grievances -->
+                <div class="rounded-2xl border bg-white shadow-sm xl:col-span-3">
+                    <div class="px-4 py-3 border-b flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24">
+                                <path :d="mdiChartLine" />
+                            </svg>
+                            Filing Trends (12 months)
+                        </h3>
+                    </div>
+                    <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="h-64">
+                            <LineChart :data="lineLiquidationsFiled" :loading="anyLoading" />
+                        </div>
+                        <div class="h-64">
+                            <LineChart :data="lineUtilizationsFiled" :loading="anyLoading" />
+                        </div>
+                        <div class="h-64">
+                            <LineChart :data="lineGrievancesFiled" :loading="anyLoading" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRIEVANCES: status mix -->
+                <div class="rounded-2xl border bg-white shadow-sm">
+                    <div class="px-4 py-3 border-b flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-rose-600" viewBox="0 0 24 24">
+                                <path :d="mdiChartDonut" />
+                            </svg>
+                            Grievances by Status
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="h-72">
+                            <DoughnutChart :data="pieGrievancesByStatus" :loading="anyLoading" />
                         </div>
                     </div>
                 </div>
