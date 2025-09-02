@@ -24,6 +24,25 @@ const routes = [
     name: "verify-email",
     component: () => import("@/auth/VerifyPage.vue"),
   },
+  // Public document verification pages
+  {
+    meta: { title: "Verify Activity Design", public: true },
+    path: "/verify-actdesign",
+    name: "verify-actdesign",
+    component: () => import("@/views/VerifyActDesignPage.vue"),
+  },
+  {
+    meta: { title: "Verify Liquidation", public: true },
+    path: "/verify-liquidation",
+    name: "verify-liquidation",
+    component: () => import("@/views/VerifyLiquidationPage.vue"),
+  },
+  {
+    meta: { title: "Verify Utilization", public: true },
+    path: "/verify-utilization",
+    name: "verify-utilization",
+    component: () => import("@/views/VerifyUtilizationPage.vue"),
+  },
   {
     meta: { title: "Verify Prompt", public: true },
     path: "/verify-prompt",

@@ -92,6 +92,13 @@ export const authGuard = async (to, from, next) => {
       "verifying-now",
     ].includes(to.name)
   ) {
+    // Allow public verification pages to be accessed even when logged in
+    const allowList = new Set([
+      "verify-actdesign",
+      "verify-liquidation",
+      "verify-utilization",
+    ]);
+    if (allowList.has(to.name)) return next();
     return next({
       name: baseRole === "student" ? "student-dashboard" : "dashboard",
     });
