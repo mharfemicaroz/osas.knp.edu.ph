@@ -243,7 +243,7 @@ async function drawStatusAndVerifyRow(doc, u, startY) {
 }
 
 /* --------------- Main Export --------------- */
-export async function printUtilizationRequestPdf(u) {
+async function buildUtilizationRequestPdfDoc(u) {
   const doc = new jsPDF({
     unit: "pt",
     format: [612, 936],
@@ -558,9 +558,12 @@ export async function printUtilizationRequestPdf(u) {
   });
   cursorY = doc.lastAutoTable.finalY;
 
-  const preparer = u?.filed_by
-    ? `${u.filed_by.first_name || ""} ${u.filed_by.last_name || ""}`.trim()
-    : "";
+  const filerOverride = String(u?.file_by_user_name || "").trim();
+  const preparer =
+    filerOverride ||
+    (u?.filed_by
+      ? `${u.filed_by.first_name || ""} ${u.filed_by.last_name || ""}`.trim()
+      : "");
   const approver = u?.approver
     ? `${u.approver.first_name || ""} ${u.approver.last_name || ""}`.trim()
     : "";
@@ -607,5 +610,12 @@ export async function printUtilizationRequestPdf(u) {
     footerY
   );
 
+  return doc;
+}
+
+export async function printUtilizationRequestPdf(u) {
+  const doc = await buildUtilizationRequestPdfDoc(u);
   doc.save(`${u.reference_code || "Utilization_Request"}.pdf`);
 }
+
+export { buildUtilizationRequestPdfDoc };

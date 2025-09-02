@@ -254,6 +254,24 @@ export const useUtilizationRequestStore = defineStore(
       }
     };
 
+    const sendEmail = async (id, payload) => {
+      error.value = null;
+      try {
+        isLoading.value = true;
+        const res = await utilizationRequestService.sendEmail(id, payload);
+        return res;
+      } catch (err) {
+        error.value =
+          err?.response?.data?.message ||
+          err?.response?.message ||
+          err?.message ||
+          "Failed to send email";
+        throw err;
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
     const checkAvailability = async (payload) => {
       error.value = null;
       try {
@@ -306,6 +324,7 @@ export const useUtilizationRequestStore = defineStore(
       cancel,
       uploadAttachment,
       deleteAttachment,
+      sendEmail,
       checkAvailability,
       resetStore,
     };

@@ -23,9 +23,10 @@ import UtilizationAttachmentsModal from '@/components/utilization/UtilizationAtt
 import CalendarViewModal from '@/components/utilization/CalendarViewModal.vue'
 import QuickAvailabilityModal from '@/components/utilization/QuickAvailabilityModal.vue'
 
-import { printUtilizationRequestPdf } from '@/utils/printUtilizationRequest'
+import { printUtilizationRequestPdf, buildUtilizationRequestPdfDoc } from '@/utils/printUtilizationRequest'
 
 import { useAuthStore } from '@/stores/auth'
+import { useUserStore } from '@/stores/user'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 
 import {
@@ -41,6 +42,7 @@ import {
 
 const store = useUtilizationRequestStore()
 const authStore = useAuthStore()
+const userStore = useUserStore()
 
 const calendarVisible = ref(false)
 const openCalendar = () => { calendarVisible.value = true }
@@ -251,6 +253,7 @@ const openEdit = async (row) => {
         reference_code: r.reference_code,
         date_filed: r.date_filed || '',
         activity_design_id: r.activity_design_id || '',
+        file_by_user_name: r.file_by_user_name || '',
         facilities,
         equipment_items,
         utilization_details: r.utilization_details || '',
@@ -293,6 +296,53 @@ const confirmDelete = async (row) => {
 
 const openView = async (row) => {
     await openEdit(row) // same modal in read-only mode (handled inside)
+}
+
+// ---------------- Email (Send PDF) ----------------
+const emailVisible = ref(false)
+const emailRow = ref(null)
+const emailForm = ref({ from_email: '', from_name: '', to: '', subject: '', html: '', attachments: [] })
+
+const toBase64 = (arrayBuffer) => {
+    let binary = ''
+    const bytes = new Uint8Array(arrayBuffer)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return btoa(binary)
+}
+
+const openEmail = async (row) => {
+    try {
+        await store.fetchById(row.id)
+        const r = store.selected || row
+        const doc = await buildUtilizationRequestPdfDoc(r)
+        const dataUri = doc.output('datauristring')
+        const b64 = String(dataUri).split(',')[1] || ''
+        const filename = `${r.reference_code || 'Utilization_Request'}.pdf`
+        emailRow.value = r
+        emailForm.value = {
+            from_email: 'osas@knp.edu.ph',
+            from_name: `${authStore.user?.first_name || ''} ${authStore.user?.last_name || ''}`.trim(),
+            to: '',
+            subject: `Utilization Request ${r.reference_code || ''}`.trim(),
+            html: 'Please see the attached file.',
+            attachments: [{ filename, content: b64, type: 'application/pdf' }],
+        }
+        emailVisible.value = true
+    } catch (e) {
+        await Swal.fire('Error', store.error || 'Failed to prepare email.', 'error')
+    }
+}
+
+const sendEmailNow = async () => {
+    const r = emailRow.value
+    if (!r) return
+    try {
+        await store.sendEmail(r.id, { ...emailForm.value })
+        emailVisible.value = false
+        await Swal.fire('Sent', 'Email sent successfully.', 'success')
+    } catch (e) {
+        await Swal.fire('Error', store.error || 'Failed to send email.', 'error')
+    }
 }
 
 /* workflow */
@@ -504,7 +554,7 @@ const resetFilters = async () => {
             </NotificationBar>
 
             <SectionTitleLineWithButton :icon="mdiTableBorder" title="Utilization Requests" main>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                     <BaseButton :icon="mdiCalendarClock" color="info" label="View Calendar" @click="openCalendar" />
                     <BaseButton :icon="mdiCalendarCheck" color="info" label="Quick Check" @click="openQuickCheck" />
                     <BaseButton :icon="mdiPlus" color="primary" label="New Request" @click="openCreate" />
@@ -513,7 +563,7 @@ const resetFilters = async () => {
             </SectionTitleLineWithButton>
 
             <!-- Filters -->
-            <div class="p-3 mb-4 rounded-xl border bg-white/60">
+            <div class="p-2 mb-4 rounded-xl border bg-white/60">
                 <div class="flex items-center gap-2 mb-2 text-gray-700">
                     <svg class="w-4 h-4" viewBox="0 0 24 24">
                         <path :d="mdiFilter" />
@@ -601,7 +651,7 @@ const resetFilters = async () => {
                         :moderator="['admin', 'manager'].includes(String(authStore.user?.role || '').toLowerCase())"
                         @attachments="openAttachments" @submit="submitItem" @approve="approveItem" @reject="rejectItem"
                         @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem"
-                        @print="printItem" />
+                        @print="printItem" @email="openEmail" />
                 </template>
             </BaseTable>
         </SectionMain>
@@ -614,4 +664,42 @@ const resetFilters = async () => {
     <UtilizationAttachmentsModal v-model="attachVisible" :row="attachRow" />
     <CalendarViewModal v-model="calendarVisible" @open="openFromCalendar" />
     <QuickAvailabilityModal v-model="quickCheckVisible" :facilities="FACILITY_OPTIONS" />
+
+    <!-- Email Modal -->
+    <div v-if="emailVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+        <div class="bg-white w-[560px] rounded-xl shadow p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-base font-semibold">Send Email</h3>
+                <button class="px-2 py-1 text-xs bg-gray-200 rounded" @click="emailVisible = false">Close</button>
+            </div>
+            <div class="grid grid-cols-1 gap-2 text-sm">
+                <div>
+                    <label class="block mb-0.5">To</label>
+                    <div class="flex gap-2">
+                        <input v-model="emailForm.to" class="flex-1 border rounded px-2 py-1.5"
+                            placeholder="recipient@example.com" />
+                        <button class="px-2 py-1 text-[11px] rounded border bg-gray-50 hover:bg-gray-100"
+                            @click="() => { const id = (emailRow?.filed_by_user_id || emailRow?.filed_by?.id); if (id) userStore.fetchById(id).then(() => { const e = userStore.selectedUser?.email; if (e) emailForm.to = e; }); }">Use Filer</button>
+                        <button class="px-2 py-1 text-[11px] rounded border bg-rose-50 hover:bg-rose-100"
+                            @click="() => { emailForm.attachments = []; }">Remove Attachment</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block mb-0.5">Subject</label>
+                    <input v-model="emailForm.subject" class="w-full border rounded px-2 py-1.5" />
+                </div>
+                <div>
+                    <label class="block mb-0.5">Message</label>
+                    <textarea v-model="emailForm.html" rows="4" class="w-full border rounded px-2 py-1.5"></textarea>
+                </div>
+                <div class="text-[11px] text-gray-600">Attachment: {{ (emailForm.attachments?.[0]?.filename) ||
+                    'utilization.pdf' }}</div>
+            </div>
+            <div class="mt-3 flex justify-end gap-2">
+                <button class="px-3 py-1.5 text-xs bg-gray-200 rounded" @click="emailVisible = false">Cancel</button>
+                <button class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded"
+                    @click="sendEmailNow">Send</button>
+            </div>
+        </div>
+    </div>
 </template>

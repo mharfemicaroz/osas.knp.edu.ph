@@ -85,15 +85,18 @@ const onEventClick = (info) => {
 }
 
 /* IMPORTANT: keep events INSIDE options (reactive) */
+const isSmall = ref(false)
+const updateSize = () => { isSmall.value = window.innerWidth < 640 }
+onMounted(() => { updateSize(); window.addEventListener('resize', updateSize) })
+
 const calendarOptions = computed(() => ({
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
-    headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay',
-    },
+    headerToolbar: isSmall.value
+        ? { left: 'prev,next', center: 'title', right: 'dayGridMonth' }
+        : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
     height: 'auto',
+    handleWindowResize: true,
     expandRows: true,
     navLinks: true,
     eventDisplay: 'block',
@@ -116,7 +119,7 @@ onMounted(() => { if (visible.value) fetchApproved() })
 
 <template>
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-[1200px] max-w-[95vw] max-h-[90vh] overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full sm:w-[1200px] max-w-[100vw] sm:max-w-[95vw] h-[100vh] sm:h-auto sm:max-h-[90vh] overflow-hidden">
             <!-- Header -->
             <div class="px-4 py-3 border-b flex items-center justify-between">
                 <h2 class="text-base font-semibold">Utilization Calendar (Approved)</h2>
@@ -124,7 +127,7 @@ onMounted(() => { if (visible.value) fetchApproved() })
             </div>
 
             <!-- Calendar -->
-            <div class="p-3 overflow-auto">
+            <div class="p-2 overflow-auto">
                 <!-- Pass ONLY :options; events are inside options as a reactive computed -->
                 <FullCalendar :options="calendarOptions" />
             </div>

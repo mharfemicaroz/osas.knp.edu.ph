@@ -78,6 +78,16 @@ const routes = [
   },
   {
     meta: {
+      title: "Tutorials",
+      requiresAuth: true,
+      roles: ["admin", "student", "student_officer"],
+    },
+    path: "/tutorials",
+    name: "tutorials",
+    component: () => import("@/views/TutorialsPage.vue"),
+  },
+  {
+    meta: {
       title: "Memberships",
       requiresAuth: true,
       roles: ["admin"],
@@ -158,13 +168,13 @@ const routes = [
   },
   {
     meta: {
-      title: "Lobby Complains",
+      title: "Grievances",
       requiresAuth: true,
-      roles: ["admin", "student", "student_officer"],
+      roles: ["admin", "manager", "student_officer"],
     },
-    path: "/lobby-complains",
-    name: "lobby-complains",
-    component: () => import("@/views/LobbyComplainsRedirect.vue"),
+    path: "/grievances",
+    name: "grievances",
+    component: () => import("@/views/GrievancesPage.vue"),
   },
 
   // 404

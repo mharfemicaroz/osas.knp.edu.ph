@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import IconifyButton from '@/components/commons/IconifyButton.vue'
 import {
     mdiPaperclip,
@@ -50,7 +50,7 @@ onBeforeUnmount(() => {
             size="sm" @click="$emit('docs', row)" />
         <IconifyButton :icon-path="mdiPencil" color="text-emerald-600" label="Edit" tooltip="Edit Club" size="sm"
             @click="$emit('edit', row)" />
-        <IconifyButton :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete Club" size="sm"
+        <IconifyButton v-if="$attrs.moderator" :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete Club" size="sm"
             @click="$emit('delete', row)" />
 
         <!-- dropdown menu -->
@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
                     @click="open = false; $emit('edit', row)">
                     Edit Club
                 </button>
-                <button role="menuitem" class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                <button v-if="$attrs.moderator" role="menuitem" class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                     @click="open = false; $emit('delete', row)">
                     Delete
                 </button>

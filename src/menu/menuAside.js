@@ -9,6 +9,7 @@ import {
   mdiAccountCircle,
   mdiFileDocument,
   mdiAccount,
+  mdiBookOpenVariant,
 } from "@mdi/js";
 
 /** Admin base menu (roles metadata) */
@@ -68,6 +69,12 @@ const ADMIN_MENU = [
     roles: ["admin", "student_officer"],
   },
   {
+    to: "/grievances",
+    icon: mdiCommentAlert,
+    label: "Grievances",
+    roles: ["admin", "manager", "student_officer"],
+  },
+  {
     to: "/workflows",
     icon: mdiFileDocument,
     label: "Workflows",
@@ -78,6 +85,12 @@ const ADMIN_MENU = [
     icon: mdiAccount,
     label: "User Management",
     roles: ["admin"],
+  },
+  {
+    to: "/tutorials",
+    icon: mdiBookOpenVariant,
+    label: "Tutorials",
+    roles: ["admin", "student", "student_officer"],
   },
   // {
   //   to: "/lobby-complains",

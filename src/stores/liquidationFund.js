@@ -250,6 +250,24 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     }
   };
 
+  const sendEmail = async (id, payload) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      const res = await liquidationFundService.sendEmail(id, payload);
+      return res;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.response?.message ||
+        err?.message ||
+        "Failed to send email";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const resetStore = () => {
     items.value = {
       total: 0,
@@ -281,6 +299,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     cancel,
     uploadAttachment,
     deleteAttachment,
+    sendEmail,
     resetStore,
   };
 });

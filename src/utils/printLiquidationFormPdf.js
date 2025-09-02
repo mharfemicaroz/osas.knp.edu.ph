@@ -217,7 +217,7 @@ async function drawStatusAndVerifyRow(doc, lf, startY) {
 }
 
 /* --------------- Main Export --------------- */
-export async function printLiquidationFormPdf(lf) {
+async function buildLiquidationFormPdfDoc(lf) {
   const doc = new jsPDF({
     unit: "pt",
     format: [612, 936],
@@ -549,9 +549,12 @@ export async function printLiquidationFormPdf(lf) {
   });
   cursorY = doc.lastAutoTable.finalY;
 
-  const preparer = lf?.filed_by
-    ? `${lf.filed_by.first_name || ""} ${lf.filed_by.last_name || ""}`.trim()
-    : "";
+  const filerOverride = String(lf?.file_by_user_name || "").trim();
+  const preparer =
+    filerOverride ||
+    (lf?.filed_by
+      ? `${lf.filed_by.first_name || ""} ${lf.filed_by.last_name || ""}`.trim()
+      : "");
   const approver = lf?.approver
     ? `${lf.approver.first_name || ""} ${lf.approver.last_name || ""}`.trim()
     : "";
@@ -598,5 +601,12 @@ export async function printLiquidationFormPdf(lf) {
     footerY
   );
 
+  return doc;
+}
+
+export async function printLiquidationFormPdf(lf) {
+  const doc = await buildLiquidationFormPdfDoc(lf);
   doc.save(`${lf.reference_code || "Liquidation_Fund"}.pdf`);
 }
+
+export { buildLiquidationFormPdfDoc };

@@ -18,7 +18,7 @@ import ActivityDesignFormModal from '@/components/activity/ActivityDesignFormMod
 import ActivityRowActions from '@/components/activity/ActivityRowActions.vue'
 import ActivityAttachmentsModal from '@/components/activity/ActivityAttachmentsModal.vue'
 
-import { printActivityDesignPdf } from '@/utils/printActivityDesign'
+import { printActivityDesignPdf, buildActivityDesignPdfDoc } from '@/utils/printActivityDesign'
 
 import { useAuthStore } from '@/stores/auth'
 import { useActivityDesignStore } from '@/stores/activityDesign'
@@ -31,6 +31,7 @@ import {
     mdiPlus,
     mdiFilter,
     mdiRefresh,
+    mdiEmailOutline,
 } from '@mdi/js'
 
 const store = useActivityDesignStore()
@@ -244,6 +245,7 @@ const openEdit = async (row) => {
         objectives: r.objectives || '',
         details_of_activity: r.details_of_activity || '',
         budgetary_requirements: r.budgetary_requirements || '',
+        file_by_user_name: r.file_by_user_name || '',
         filed_by_user_id: r.filed_by_user_id || '',
         club_id: r.club_id || '',
         status: r.status || 'draft',
@@ -338,6 +340,60 @@ const approveItem = async (row) => {
         await Swal.fire('Approved', 'Activity has been approved.', 'success')
     } catch {
         await Swal.fire('Error', store.error || 'Failed to approve activity.', 'error')
+    }
+}
+
+// ---------------- Email (Send PDF) ----------------
+const emailVisible = ref(false)
+const emailRow = ref(null)
+const emailForm = ref({ from_email: '', from_name: '', to: '', subject: '', html: '', attachments: [] })
+
+const toBase64FromBlob = (blob) => new Promise((resolve, reject) => {
+    try {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            const res = String(reader.result || '')
+            const b64 = res.split(',')[1] || ''
+            resolve(b64)
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+    } catch (e) { reject(e) }
+})
+
+const openEmail = async (row) => {
+    try {
+        await store.fetchById(row.id)
+        const r = store.selected || row
+        const doc = await buildActivityDesignPdfDoc(r)
+        const dataUri = doc.output('datauristring')
+        const b64 = String(dataUri).split(',')[1] || ''
+        const filename = `${r.reference_code || 'Activity_Design'}.pdf`
+
+        emailRow.value = r
+        emailForm.value = {
+            from_email: 'osas@knp.edu.ph',
+            from_name: `${authStore.user?.first_name || ''} ${authStore.user?.last_name || ''}`.trim(),
+            to: '',
+            subject: `Activity Design ${r.reference_code || ''} - ${r.name_of_activity || ''}`.trim(),
+            html: 'Please see the attached file.',
+            attachments: [{ filename, content: b64, type: 'application/pdf' }],
+        }
+        emailVisible.value = true
+    } catch (e) {
+        await Swal.fire('Error', store.error || 'Failed to prepare email.', 'error')
+    }
+}
+
+const sendEmailNow = async () => {
+    const r = emailRow.value
+    if (!r) return
+    try {
+        await store.sendEmail(r.id, { ...emailForm.value })
+        emailVisible.value = false
+        await Swal.fire('Sent', 'Email sent successfully.', 'success')
+    } catch (e) {
+        await Swal.fire('Error', store.error || 'Failed to send email.', 'error')
     }
 }
 
@@ -453,7 +509,7 @@ const resetFilters = async () => {
             </SectionTitleLineWithButton>
 
             <!-- Filters -->
-            <div class="p-3 mb-4 rounded-xl border bg-white/60">
+            <div class="p-2 mb-4 rounded-xl border bg-white/60">
                 <div class="flex items-center gap-2 mb-2 text-gray-700">
                     <svg class="w-4 h-4" viewBox="0 0 24 24">
                         <path :d="mdiFilter" />
@@ -588,10 +644,11 @@ const resetFilters = async () => {
                         v-if="['admin', 'manager'].includes(String(authStore.user?.role || '').toLowerCase())"
                         :row="row" :moderator="true" @attachments="openAttachments" @submit="submitItem"
                         @approve="approveItem" @reject="rejectItem" @edit="openEdit" @delete="confirmDelete"
-                        @view="openView(row)" @cancel="cancelItem" @print="printItem" />
+                        @view="openView(row)" @cancel="cancelItem" @print="printItem" @email="openEmail" />
 
                     <ActivityRowActions v-else :row="row" :moderator="false" @attachments="openAttachments"
-                        @submit="submitItem" @edit="openEdit" @view="openView(row)" @print="printItem" />
+                        @submit="submitItem" @edit="openEdit" @view="openView(row)" @print="printItem"
+                        @email="openEmail" />
                 </template>
             </BaseTable>
         </SectionMain>
@@ -601,4 +658,42 @@ const resetFilters = async () => {
     <ActivityDesignFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}" @submit="onEditSubmit" />
 
     <ActivityAttachmentsModal v-model="attachVisible" :row="attachRow" />
+
+    <!-- Email Modal -->
+    <div v-if="emailVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+        <div class="bg-white w-[560px] rounded-xl shadow p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-base font-semibold">Send Email</h3>
+                <button class="px-2 py-1 text-xs bg-gray-200 rounded" @click="emailVisible = false">Close</button>
+            </div>
+            <div class="grid grid-cols-1 gap-2 text-sm">
+                <div>
+                    <label class="block mb-0.5">To</label>
+                    <div class="flex gap-2">
+                        <input v-model="emailForm.to" class="flex-1 border rounded px-2 py-1.5"
+                            placeholder="recipient@example.com" />
+                        <button class="px-2 py-1 text-[11px] rounded border bg-gray-50 hover:bg-gray-100"
+                            @click="() => { const id = (emailRow?.filed_by_user_id || emailRow?.filed_by?.id); if (id) userStore.fetchById(id).then(() => { const e = userStore.selectedUser?.email; if (e) emailForm.to = e; }); }">Use Filer</button>
+                        <button class="px-2 py-1 text-[11px] rounded border bg-rose-50 hover:bg-rose-100"
+                            @click="() => { emailForm.attachments = []; }">Remove Attachment</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block mb-0.5">Subject</label>
+                    <input v-model="emailForm.subject" class="w-full border rounded px-2 py-1.5" />
+                </div>
+                <div>
+                    <label class="block mb-0.5">Message</label>
+                    <textarea v-model="emailForm.html" rows="4" class="w-full border rounded px-2 py-1.5"></textarea>
+                </div>
+                <div class="text-[11px] text-gray-600">Attachment: {{ (emailForm.attachments?.[0]?.filename) ||
+                    'activity.pdf' }}</div>
+            </div>
+            <div class="mt-3 flex justify-end gap-2">
+                <button class="px-3 py-1.5 text-xs bg-gray-200 rounded" @click="emailVisible = false">Cancel</button>
+                <button class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded"
+                    @click="sendEmailNow">Send</button>
+            </div>
+        </div>
+    </div>
 </template>

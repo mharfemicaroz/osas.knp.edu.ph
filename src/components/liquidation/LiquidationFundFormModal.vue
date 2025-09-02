@@ -16,6 +16,7 @@ const props = defineProps({
             reference_code: '',
             date_filed: '',
             activity_design_id: '',
+            file_by_user_name: '',
             sources_of_fund: {
                 contribution: 0,
                 payment_from_fines: 0,
@@ -41,6 +42,7 @@ const visible = computed({
 const auth = useAuthStore()
 const lfStore = useLiquidationFundStore()
 const adStore = useActivityDesignStore()
+const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
 const approvedAds = computed(() =>
     Array.isArray(adStore.items?.data)
@@ -139,6 +141,8 @@ const onSubmit = () => {
     const payload = { ...form.value }
     // set filed_by on create
     if (!payload.filed_by_user_id && auth.user?.id) payload.filed_by_user_id = auth.user.id
+    // Only admins can set file_by_user_name
+    if (!isAdmin.value) delete payload.file_by_user_name
     emit('submit', payload)
 }
 </script>
@@ -172,7 +176,7 @@ const onSubmit = () => {
                     </option>
                 </select>
                 <p v-if="errors.activity_design_id" class="text-red-600 text-[11px] mt-1">{{ errors.activity_design_id
-                    }}</p>
+                }}</p>
                 <p v-if="adStore.isLoading" class="text-[11px] text-gray-500 mt-1">Loading approved activities…</p>
                 <p v-else-if="!approvedAds.length" class="text-[11px] text-amber-700 mt-1">No approved activity designs
                     found.</p>
@@ -296,11 +300,20 @@ const onSubmit = () => {
             </div>
 
             <!-- Remarks -->
-            <div class="mt-4 text-sm">
-                <label class="block mb-1">Remarks</label>
-                <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2.5 py-2"
-                    :disabled="readOnly" />
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div v-if="isAdmin">
+                    <label class="block mb-1">Filer Name Override (optional)</label>
+                    <input v-model="form.file_by_user_name" class="w-full border rounded px-2.5 py-2"
+                        :disabled="readOnly" placeholder="If provided, this name appears as the filer" />
+                </div>
+
+                <div>
+                    <label class="block mb-1">Remarks</label>
+                    <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2.5 py-2"
+                        :disabled="readOnly"></textarea>
+                </div>
             </div>
+
 
             <!-- Footer -->
             <div class="flex justify-end gap-2 mt-5">

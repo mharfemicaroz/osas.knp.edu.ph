@@ -165,4 +165,13 @@ export default {
     );
     return res;
   },
+
+  async sendEmail(id, { from_email, from_name, to, subject, html, text, attachments }) {
+    const payload = { from_email, from_name, to, subject, html, text, attachments };
+    const { data: res } = await axiosInstance.post(
+      `/liquidation-funds/${id}/email`,
+      payload
+    );
+    return res;
+  },
 };

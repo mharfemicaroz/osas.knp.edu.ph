@@ -10,7 +10,7 @@ import BaseTable from '@/components/BaseTable.vue'
 import NotificationBar from '@/components/NotificationBar.vue'
 import Badge from '@/components/commons/Badge.vue'
 
-import AnnualPlanRowActions from '@/components/activity/ActivityRowActions.vue'
+import AnnualPlanRowActions from '@/components/annualPlan/AnnualPlanRowActions.vue'
 import AnnualPlanFormModal from '@/components/annualPlan/AnnualPlanFormModal.vue'
 import AnnualPlanAttachmentsModal from '@/components/annualPlan/AnnualPlanAttachmentsModal.vue'
 import AnnualPlansCalendarModal from '@/components/annualPlan/AnnualPlansCalendarModal.vue'
@@ -25,6 +25,7 @@ import {
 
 const store = useAnnualPlanStore()
 const authStore = useAuthStore()
+const isAdminManager = computed(() => ['admin','manager'].includes(String(authStore.user?.role || '').toLowerCase()))
 
 /* Calendar modal */
 const calendarVisible = ref(false)
@@ -233,9 +234,11 @@ const cancelItem = async (row) => {
     })
     if (!res.isConfirmed) return
     try {
+        // Perform cancel action, then revert status back to draft for editing
         await store.cancel(row.id, res.value)
+        await store.updateById(row.id, { status: 'draft' })
         await fetchAll({}, true)
-        await Swal.fire('Cancelled', 'Annual plan has been cancelled.', 'success')
+        await Swal.fire('Moved to Draft', 'Annual plan was cancelled and returned to Draft for editing.', 'success')
     } catch {
         await Swal.fire('Error', store.error || 'Failed to cancel.', 'error')
     }
@@ -259,7 +262,7 @@ const openAttachments = async (row) => {
             </NotificationBar>
 
             <SectionTitleLineWithButton :icon="mdiTableBorder" title="Annual Plans" main>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                     <BaseButton :icon="mdiCalendarClock" color="info" label="View Calendar" @click="openCalendar" />
                     <BaseButton :icon="mdiPlus" color="primary" label="New Annual Plan" @click="openCreate" />
                     <BaseButton :icon="mdiRefresh" color="info" label="Refresh" @click="fetchAll({}, true)" />
@@ -327,7 +330,7 @@ const openAttachments = async (row) => {
                 </template>
                 <template #cell-actions="{ row }">
                     <AnnualPlanRowActions :row="row"
-                        :moderator="['admin', 'manager'].includes(String(authStore.user?.role || '').toLowerCase())"
+                        :moderator="isAdminManager"
                         @attachments="openAttachments" @submit="submitItem" @approve="approveItem" @reject="rejectItem"
                         @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem" />
                 </template>

@@ -248,6 +248,24 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     }
   };
 
+  const sendEmail = async (id, payload) => {
+    error.value = null;
+    try {
+      isLoading.value = true;
+      const res = await activityDesignService.sendEmail(id, payload);
+      return res;
+    } catch (err) {
+      error.value =
+        err?.response?.data?.message ||
+        err?.response?.message ||
+        err?.message ||
+        "Failed to send email";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const resetStore = () => {
     items.value = {
       total: 0,
@@ -279,6 +297,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     cancel,
     uploadAttachment,
     deleteAttachment,
+    sendEmail,
     resetStore,
   };
 });

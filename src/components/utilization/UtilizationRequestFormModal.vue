@@ -38,6 +38,7 @@ const props = defineProps({
             date_filed: '',
             activity_design_id: '',
             // filed_by_user_id is now implicit via auth
+            file_by_user_name: '',
             facilities: [],
             equipment_items: [],
             utilization_details: '',
@@ -62,6 +63,7 @@ const visible = computed({
 const auth = useAuthStore()
 const urStore = useUtilizationRequestStore()
 const adStore = useActivityDesignStore()
+const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
 /* Approved Activity Designs for selection */
 const approvedAds = computed(() =>
@@ -261,6 +263,9 @@ const onSubmit = () => {
     // Inject filed_by_user_id from auth store; never expose field in UI
     if (auth.user?.id) payload.filed_by_user_id = auth.user.id
 
+    // Only admins can set file_by_user_name
+    if (!isAdmin.value) delete payload.file_by_user_name
+
     emit('submit', payload)
 }
 </script>
@@ -425,6 +430,14 @@ const onSubmit = () => {
                     <textarea v-model="form.utilization_details" rows="3" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" />
                 </div>
+                <div v-if="isAdmin">
+                    <label class="block mb-0.5">Filer Name Override (optional)</label>
+                    <input v-model="form.file_by_user_name" class="w-full border rounded px-2 py-1.5"
+                        :disabled="readOnly" placeholder="If provided, this name appears as the filer" />
+                </div>
+            </div>
+
+            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <div>
                     <label class="block mb-0.5">Remarks</label>
                     <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2 py-1.5"

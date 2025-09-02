@@ -203,7 +203,7 @@ async function drawStatusAndVerifyRow(doc, a, startY) {
   return doc.lastAutoTable.finalY;
 }
 
-export async function printActivityDesignPdf(a) {
+async function buildActivityDesignPdfDoc(a) {
   const doc = new jsPDF({
     unit: "pt",
     format: [612, 936],
@@ -392,9 +392,12 @@ export async function printActivityDesignPdf(a) {
   });
   cursorY = doc.lastAutoTable.finalY;
 
-  const preparer = a?.filed_by
-    ? `${a.filed_by.first_name || ""} ${a.filed_by.last_name || ""}`.trim()
-    : "";
+  const filerOverride = String(a?.file_by_user_name || "").trim();
+  const preparer =
+    filerOverride ||
+    (a?.filed_by
+      ? `${a.filed_by.first_name || ""} ${a.filed_by.last_name || ""}`.trim()
+      : "");
   const approver = a?.approver
     ? `${a.approver.first_name || ""} ${a.approver.last_name || ""}`.trim()
     : "";
@@ -442,5 +445,12 @@ export async function printActivityDesignPdf(a) {
     footerY
   );
 
+  return doc;
+}
+
+export async function printActivityDesignPdf(a) {
+  const doc = await buildActivityDesignPdfDoc(a);
   doc.save(`${a.reference_code || "Activity_Design"}.pdf`);
 }
+
+export { buildActivityDesignPdfDoc };

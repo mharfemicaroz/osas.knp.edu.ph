@@ -250,7 +250,9 @@ const handleQueryChange = async (query) => {
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <ClubRowActions :row="row" @view="viewClub" @members="viewMembers" @docs="viewDocs" @edit="openEdit"
+                    <ClubRowActions :row="row"
+                        :moderator="['admin','manager'].includes(String(authStore.user?.role || '').toLowerCase())"
+                        @view="viewClub" @members="viewMembers" @docs="viewDocs" @edit="openEdit"
                         @delete="confirmDelete" @attachments="openAttachments" />
                 </template>
             </BaseTable>

@@ -1,19 +1,21 @@
 <!-- src/layouts/LayoutAuthenticated.vue -->
 <template>
     <div id="wrapper" class="min-h-screen flex flex-col m-0 p-0 bg-gradient-to-b from-gray-50 to-white">
-        <div v-if="loading" class="fixed inset-0 bg-white/80 flex justify-center items-center z-50 m-0 p-0">
+        <div v-if="loading" class="fixed inset-0 bg-white/80 flex justify-center items-center z-50">
             <div class="border-8 border-gray-200 border-t-accent rounded-full w-24 h-24 animate-spin"></div>
         </div>
 
-        <header class="sticky top-0 z-20 m-0 p-0">
-            <AppHeader :fullname="fullName" :avatar="avatarSrc" @toggle="toggleSidebar" @request-logout="handleLogout" />
+        <header class="sticky top-0 z-20">
+            <AppHeader :fullname="fullName" :avatar="avatarSrc" @toggle="toggleSidebar"
+                @request-logout="handleLogout" />
             <AppMobileNav :show="showSidebar" />
         </header>
 
-        <div class="flex flex-1 m-0 p-0">
+        <div class="flex flex-1">
             <AppSidebar @request-logout="handleLogout" />
-            <main class="flex-1 m-0 p-0 bg-gray-50">
-                <div class="max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
+            <main class="flex-1 m-0 p-0">
+                <!-- full bleed, no max width, no padding -->
+                <div class="w-full h-full m-0 p-0">
                     <slot />
                 </div>
             </main>
@@ -57,7 +59,6 @@ function normalizeAvatar(user) {
 }
 
 const avatarSrc = computed(() => {
-    // Prefer avatar on auth user; fallback to selectedUser from userStore
     return normalizeAvatar(authStore.user) || normalizeAvatar(userStore.selectedUser) || "";
 });
 
@@ -73,14 +74,10 @@ const doLogout = async () => {
 };
 
 const handleLogout = () => doLogout();
-
-const toggleSidebar = () => {
-    showSidebar.value = !showSidebar.value;
-};
+const toggleSidebar = () => { showSidebar.value = !showSidebar.value; };
 
 onMounted(() => {
     window.toastRef = toast.value;
-    // If avatar missing, try to hydrate from user profile once
     const uid = authStore.user?.id;
     if (uid && !normalizeAvatar(authStore.user)) {
         userStore.fetchById(uid).catch(() => null);

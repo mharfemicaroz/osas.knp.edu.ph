@@ -26,6 +26,7 @@ const props = defineProps({
             objectives: '',
             details_of_activity: '',
             budgetary_requirements: '',
+            file_by_user_name: '',        // optional override
             filed_by_user_id: '',         // hidden (from auth)
             club_id: '',
             status: 'draft',
@@ -48,6 +49,7 @@ const auth = useAuthStore()
 const clubStore = useClubStore()
 const apStore = useAnnualPlanStore()
 const currentUserId = computed(() => auth.user?.id || null)
+const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
 const form = ref({ ...props.initial })
 const errors = ref({})
@@ -297,6 +299,8 @@ const onSubmit = () => {
     const payload = { ...form.value }
     if (payload.proposed_budget === '') payload.proposed_budget = 0
     payload.filed_by_user_id = currentUserId.value
+    // Only admins can set file_by_user_name
+    if (!isAdmin.value) delete payload.file_by_user_name
 
     // force club info to match AP if linked
     if (isApLinked.value && selectedAnnualPlan.value) {
@@ -522,6 +526,12 @@ const onSubmit = () => {
                     <p v-if="errors.budgetary_requirements" class="text-red-600 text-[11px] mt-0.5">{{
                         errors.budgetary_requirements }}</p>
                 </div>
+            </div>
+
+            <div v-if="isAdmin" class="mt-2 text-sm">
+                <label class="block mb-0.5">Filer Name Override (optional)</label>
+                <input v-model="form.file_by_user_name" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
+                    placeholder="If provided, this name appears as the filer" />
             </div>
 
             <div class="mt-2 text-sm">

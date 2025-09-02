@@ -133,15 +133,18 @@ function eventDidMount(info) {
     }
 }
 
+const isSmall = ref(false)
+const updateSize = () => { isSmall.value = window.innerWidth < 640 }
+onMounted(() => { updateSize(); window.addEventListener('resize', updateSize) })
+
 const calendarOptions = computed(() => ({
     plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
-    headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-    },
+    headerToolbar: isSmall.value
+        ? { left: 'prev,next', center: 'title', right: 'dayGridMonth' }
+        : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
     height: 'auto',
+    handleWindowResize: true,
     stickyHeaderDates: true,
     dayMaxEvents: 3,
     navLinks: true,
