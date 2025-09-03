@@ -577,8 +577,8 @@ async function buildUtilizationRequestPdfDoc(u) {
       textColor: 20,
       fontStyle: "bold",
     },
-    head: [["PREPARED BY:", "APPROVED BY:"]],
-    body: [[preparer || " ", approver || " "]],
+    head: [["PREPARED BY:", "NOTED BY:", "APPROVED BY:"]],
+    body: [[preparer || " ", "Albert P. Mapalo, LPT, MAEd", approver || " "]],
     columnStyles: {
       0: { cellWidth: (pageW - marginX * 2) / 2 },
       1: { cellWidth: "auto" },

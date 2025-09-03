@@ -412,7 +412,7 @@ async function buildActivityDesignPdfDoc(a) {
       fontStyle: "bold",
     },
     head: [["PREPARED BY:", "NOTED BY:", "APPROVED BY:"]],
-    body: [[preparer || " ", "Albert P. Mapalo", approver || " "]],
+    body: [[preparer || " ", "Albert P. Mapalo, LPT, MAEd", approver || " "]],
     columnStyles: {
       0: { cellWidth: (pageW - marginX * 2) / 3 },
       1: { cellWidth: (pageW - marginX * 2) / 3 },

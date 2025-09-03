@@ -193,15 +193,25 @@ const events = computed(() => {
     const list = []
     if (showAD.value) {
         for (const r of adStore.items.data || []) {
+            const status = String(r?.status || '').toLowerCase()
+            const cid = Number(r?.club_id || r?.club?.id)
+            if (status !== 'approved') continue
+            if (Number(clubId.value) && cid !== Number(clubId.value)) continue
             const start = r?.date_of_implementation || r?.approved_at || r?.created_at
             if (!start) continue
             const { backgroundColor, borderColor } = colorByType('AD')
-            list.push({ id: `AD-${r.id}`, title: `Activity: ${r.name_of_activity || r.reference_code}`,
-                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code }, backgroundColor, borderColor })
+            list.push({
+                id: `AD-${r.id}`, title: `Activity: ${r.name_of_activity || r.reference_code}`,
+                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code }, backgroundColor, borderColor
+            })
         }
     }
     if (showUR.value) {
         for (const r of urStore.items.data || []) {
+            const status = String(r?.status || '').toLowerCase()
+            if (status !== 'approved') continue
+            const cid = Number(r?.activity_design?.club_id || r?.club_id)
+            if (Number(clubId.value) && cid !== Number(clubId.value)) continue
             const start = r?.start_at || r?.approved_at || r?.created_at
             const end = r?.end_at || r?.start_at || r?.approved_at
             if (!start) continue
@@ -209,18 +219,26 @@ const events = computed(() => {
             const facTxt = fac?.length ? ` • ${fac.join(', ')}` : ''
             const act = r?.activity_design?.name_of_activity ? ` • ${r.activity_design.name_of_activity}` : ''
             const { backgroundColor, borderColor } = colorByType('UR')
-            list.push({ id: `UR-${r.id}`, title: `Utilization${act}${facTxt}`, start, end, allDay: !r?.start_at || !r?.end_at,
-                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac }, backgroundColor, borderColor })
+            list.push({
+                id: `UR-${r.id}`, title: `Utilization${act}${facTxt}`, start, end, allDay: !r?.start_at || !r?.end_at,
+                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac }, backgroundColor, borderColor
+            })
         }
     }
     if (showAP.value) {
         for (const r of apStore.items.data || []) {
+            const status = String(r?.status || '').toLowerCase()
+            const cid = Number(r?.club_id || r?.club?.id)
+            if (status !== 'approved') continue
+            if (Number(clubId.value) && cid !== Number(clubId.value)) continue
             const start = r?.approved_at || r?.submitted_at || r?.created_at
             if (!start) continue
             const sy = r?.school_year ? ` • SY ${r.school_year}` : ''
             const { backgroundColor, borderColor } = colorByType('AP')
-            list.push({ id: `AP-${r.id}`, title: `Annual Plan Approved${sy}`, start, allDay: true,
-                extendedProps: { type: 'Annual Plan', ref: r.reference_code }, backgroundColor, borderColor })
+            list.push({
+                id: `AP-${r.id}`, title: `Annual Plan Approved${sy}`, start, allDay: true,
+                extendedProps: { type: 'Annual Plan', ref: r.reference_code }, backgroundColor, borderColor
+            })
         }
     }
     return list
@@ -490,25 +508,29 @@ const calendarOptions = computed(() => ({
                                 Club Calendar
                             </h3>
                             <div class="flex items-center gap-2 text-xs">
-                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                <label
+                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                                     <input type="checkbox" v-model="showAD" class="accent-blue-600">
                                     <span>Activities</span>
                                 </label>
-                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <label
+                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <input type="checkbox" v-model="showUR" class="accent-emerald-600">
                                     <span>Utilizations</span>
                                 </label>
-                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                <label
+                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                                     <input type="checkbox" v-model="showAP" class="accent-amber-600">
                                     <span>Annual Plans</span>
                                 </label>
-                                <button class="px-2 py-1 bg-white border rounded inline-flex items-center gap-1"
-                                    @click="Promise.allSettled([
-                                        adStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
-                                        urStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'start_at' }, true),
-                                        apStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
-                                    ])">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24"><path :d="mdiRefresh" /></svg>
+                                <button class="px-2 py-1 bg-white border rounded inline-flex items-center gap-1" @click="Promise.allSettled([
+                                    adStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
+                                    urStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'start_at' }, true),
+                                    apStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
+                                ])">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24">
+                                        <path :d="mdiRefresh" />
+                                    </svg>
                                     Refresh
                                 </button>
                             </div>
@@ -520,15 +542,18 @@ const calendarOptions = computed(() => ({
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
                                 <div class="p-3 rounded-xl border bg-white shadow-sm border-blue-200">
                                     <div class="text-xs uppercase tracking-wide text-blue-600 mb-1">Legend</div>
-                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-blue-600"></span> Activity Design</div>
+                                    <div class="flex items-center gap-2"><span
+                                            class="w-3 h-3 rounded-sm bg-blue-600"></span> Activity Design</div>
                                 </div>
                                 <div class="p-3 rounded-xl border bg-white shadow-sm border-emerald-200">
                                     <div class="text-xs uppercase tracking-wide text-emerald-600 mb-1">Legend</div>
-                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-emerald-600"></span> Utilization</div>
+                                    <div class="flex items-center gap-2"><span
+                                            class="w-3 h-3 rounded-sm bg-emerald-600"></span> Utilization</div>
                                 </div>
                                 <div class="p-3 rounded-xl border bg-white shadow-sm border-amber-200">
                                     <div class="text-xs uppercase tracking-wide text-amber-600 mb-1">Legend</div>
-                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-amber-600"></span> Annual Plan</div>
+                                    <div class="flex items-center gap-2"><span
+                                            class="w-3 h-3 rounded-sm bg-amber-600"></span> Annual Plan</div>
                                 </div>
                             </div>
                         </div>
@@ -562,7 +587,7 @@ const calendarOptions = computed(() => ({
                             <div class="flex items-center justify-between">
                                 <span>Established</span>
                                 <span class="text-gray-500">{{ establishedAt ? establishedAt.toLocaleDateString() : '—'
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span>Website</span>
@@ -595,5 +620,21 @@ const calendarOptions = computed(() => ({
 </template>
 
 <style scoped>
-/* small niceties */
+.fc .fc-daygrid-event {
+    padding: 2px 6px;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.fc .fc-toolbar-title {
+    font-weight: 700;
+}
+
+/* NEW: make list view text black for readability */
+.fc .fc-list-event .fc-list-event-time,
+.fc .fc-list-event .fc-list-event-title,
+.fc .fc-list-event .fc-list-event-title a {
+    color: #111827 !important;
+    /* tailwind gray-900 */
+}
 </style>
