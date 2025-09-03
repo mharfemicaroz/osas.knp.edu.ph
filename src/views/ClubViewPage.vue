@@ -300,7 +300,7 @@ const calendarOptions = computed(() => ({
             <!-- Cover + Logo header -->
             <div class="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
                 <!-- Banner -->
-                <div class="relative h-48 sm:h-64 w-full bg-gray-100 rounded-t-2xl overflow-hidden">
+                <div class="relative h-48 sm:h-80 md:h-[360px] w-full bg-gray-100 rounded-t-2xl overflow-hidden">
                     <img v-if="bannerUrl" :src="bannerUrl" alt="Banner" class="h-full w-full object-cover" />
                     <div v-else
                         class="flex h-full w-full items-center justify-center bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-500">
