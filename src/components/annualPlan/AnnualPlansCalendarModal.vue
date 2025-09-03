@@ -42,9 +42,9 @@ const buildEvents = (rows = []) => {
                 title,
                 start: `${date}T00:00:00`,
                 end: `${date}T23:59:59`,
-                backgroundColor: '#10b981',
-                borderColor: '#0ea5e9',
-                textColor: '#0b1b13',
+                backgroundColor: '#b45309', // amber-700 (dark)
+                borderColor: '#92400e',     // amber-800
+                textColor: '#ffffff',       // strong contrast
                 extendedProps: {
                     annual_plan_id: row.id,
                     reference_code: row.reference_code,

@@ -55,9 +55,9 @@ const buildEvents = (rows = []) => {
                 title,
                 start,
                 end,
-                backgroundColor: '#10b981', // emerald
-                borderColor: '#0ea5e9',     // sky
-                textColor: '#0b1b13',
+                backgroundColor: '#047857', // emerald-700 (dark)
+                borderColor: '#065f46',     // emerald-800
+                textColor: '#ffffff',       // strong contrast
                 extendedProps: {
                     reference_code: r.reference_code,
                     facilities,

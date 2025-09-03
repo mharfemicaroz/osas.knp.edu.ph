@@ -184,9 +184,10 @@ const showAP = ref(true)
 
 function parseJSONSafe(s, fb = []) { try { return JSON.parse(s || '[]') } catch { return fb } }
 function colorByType(type) {
-    if (type === 'AD') return { backgroundColor: '#2563eb', borderColor: '#1d4ed8' }
-    if (type === 'UR') return { backgroundColor: '#059669', borderColor: '#047857' }
-    return { backgroundColor: '#d97706', borderColor: '#b45309' }
+    // Force crisp, dark palettes for strong contrast
+    if (type === 'AD') return { backgroundColor: '#1e40af', borderColor: '#1e3a8a', textColor: '#ffffff' } // blue-800/900
+    if (type === 'UR') return { backgroundColor: '#047857', borderColor: '#065f46', textColor: '#ffffff' } // emerald-700/800
+    return { backgroundColor: '#b45309', borderColor: '#92400e', textColor: '#ffffff' }                   // amber-700/800
 }
 
 const events = computed(() => {
@@ -199,10 +200,10 @@ const events = computed(() => {
             if (Number(clubId.value) && cid !== Number(clubId.value)) continue
             const start = r?.date_of_implementation || r?.approved_at || r?.created_at
             if (!start) continue
-            const { backgroundColor, borderColor } = colorByType('AD')
+            const { backgroundColor, borderColor, textColor } = colorByType('AD')
             list.push({
                 id: `AD-${r.id}`, title: `Activity: ${r.name_of_activity || r.reference_code}`,
-                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code }, backgroundColor, borderColor
+                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code }, backgroundColor, borderColor, textColor
             })
         }
     }
@@ -218,10 +219,10 @@ const events = computed(() => {
             const fac = Array.isArray(r?.facilities) ? r.facilities : parseJSONSafe(r?.facilities)
             const facTxt = fac?.length ? ` • ${fac.join(', ')}` : ''
             const act = r?.activity_design?.name_of_activity ? ` • ${r.activity_design.name_of_activity}` : ''
-            const { backgroundColor, borderColor } = colorByType('UR')
+            const { backgroundColor, borderColor, textColor } = colorByType('UR')
             list.push({
                 id: `UR-${r.id}`, title: `Utilization${act}${facTxt}`, start, end, allDay: !r?.start_at || !r?.end_at,
-                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac }, backgroundColor, borderColor
+                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac }, backgroundColor, borderColor, textColor
             })
         }
     }
@@ -234,10 +235,10 @@ const events = computed(() => {
             const start = r?.approved_at || r?.submitted_at || r?.created_at
             if (!start) continue
             const sy = r?.school_year ? ` • SY ${r.school_year}` : ''
-            const { backgroundColor, borderColor } = colorByType('AP')
+            const { backgroundColor, borderColor, textColor } = colorByType('AP')
             list.push({
                 id: `AP-${r.id}`, title: `Annual Plan Approved${sy}`, start, allDay: true,
-                extendedProps: { type: 'Annual Plan', ref: r.reference_code }, backgroundColor, borderColor
+                extendedProps: { type: 'Annual Plan', ref: r.reference_code }, backgroundColor, borderColor, textColor
             })
         }
     }
