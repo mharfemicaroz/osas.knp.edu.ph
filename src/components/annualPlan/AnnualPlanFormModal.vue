@@ -9,6 +9,7 @@ import axiosInstance from '@/plugins/axiosConfig' // used to fetch clubs (simple
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
     mode: { type: String, default: 'create' }, // 'create' | 'edit'
+    lockedClubId: { type: [String, Number], default: '' },
     initial: {
         type: Object,
         default: () => ({
@@ -46,7 +47,7 @@ const loadClubs = async () => {
         clubs.value = Array.isArray(data?.data) ? data.data : []
     } catch { clubs.value = [] }
 }
-onMounted(loadClubs)
+onMounted(async () => { await loadClubs(); if (props.lockedClubId) form.value.club_id = Number(props.lockedClubId) })
 
 const form = ref(structuredClone(props.initial))
 const errors = ref({})
@@ -142,7 +143,7 @@ const onSubmit = () => {
                 <div>
                     <label class="block mb-1">Club <span class="text-red-500">*</span></label>
                     <select v-model="form.club_id" class="w-full border rounded px-2.5 py-2"
-                        :disabled="readOnly || !clubs.length" :class="errors.club_id ? 'border-red-500' : ''">
+                        :disabled="readOnly || !clubs.length || !!lockedClubId" :class="errors.club_id ? 'border-red-500' : ''">
                         <option value="">Select club…</option>
                         <option v-for="c in clubs" :key="c.id" :value="c.id">
                             {{ c.name }} ({{ c.code }})

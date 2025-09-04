@@ -15,6 +15,7 @@ import { useClubStore } from '@/stores/club'
 import { useClubDocStore } from '@/stores/clubDoc'
 import { useAuthStore } from '@/stores/auth'
 import { useActivityDesignStore } from '@/stores/activityDesign'
+import { useClubScope } from '@/utils/clubScope'
 
 /* Icons */
 import {
@@ -32,6 +33,7 @@ const clubStore = useClubStore()
 const docStore = useClubDocStore()
 const authStore = useAuthStore()
 const adStore = useActivityDesignStore()
+const { isClub, activeClubId, withClub } = useClubScope()
 
 /* Local loading */
 const bootLoading = ref(true)
@@ -45,8 +47,11 @@ onMounted(async () => {
         await Promise.all([
             clubStore.fetchAll({ page: 1, limit: 1000, filters: { include: 'users' } }, true),
             docStore.fetchAll({ page: 1, limit: 2000 }, true),
-            adStore.fetchAll({ page: 1, limit: 2000 }, true), // activities needed for charts
+            adStore.fetchAll(withClub({ page: 1, limit: 2000 }), true), // activities needed for charts (scoped)
         ])
+        if (isClub.value && activeClubId.value) {
+            filters.value.club_id = Number(activeClubId.value)
+        }
     } finally {
         bootLoading.value = false
     }
@@ -89,6 +94,17 @@ const filters = ref({
     school_year: '',
     semester: '',
     club_id: '', // pick a specific club (optional)
+})
+
+// Keep filters in sync with global club scope
+import { watch } from 'vue'
+watch([isClub, activeClubId], () => {
+    if (isClub.value && activeClubId.value) {
+        filters.value.club_id = Number(activeClubId.value)
+    } else if (!isClub.value) {
+        // revert to all clubs when back to profile context
+        filters.value.club_id = ''
+    }
 })
 
 /* ---------- Helpers ---------- */
@@ -329,7 +345,7 @@ const anyLoading = computed(() =>
                         <option v-for="s in SEMESTERS" :key="s" :value="s">{{ s }}</option>
                     </select>
 
-                    <select v-model="filters.club_id" class="border rounded px-2 py-2">
+                    <select v-model="filters.club_id" class="border rounded px-2 py-2" :disabled="isClub && !!activeClubId">
                         <option value="">All My Clubs</option>
                         <option v-for="c in myClubs" :key="c.id" :value="c.id">{{ c.name || ('Club ' + c.id) }}</option>
                     </select>

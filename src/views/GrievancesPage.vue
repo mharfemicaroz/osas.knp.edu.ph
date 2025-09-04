@@ -15,6 +15,7 @@ import GrievanceFormModal from '@/components/grievance/GrievanceFormModal.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useGrievanceStore } from '@/stores/grievance'
+import { useClubScope } from '@/utils/clubScope'
 import { useClubStore } from '@/stores/club'
 import { useUserStore } from '@/stores/user'
 
@@ -50,9 +51,11 @@ const dataWrap = computed(() => ({
   data: store.items.data || [],
 }))
 
+const { isClub, activeClubId, withClub } = useClubScope()
+
 const fetchAll = async (patch = {}, force = true) => {
   lastQuery.value = { ...lastQuery.value, ...patch }
-  const params = { ...lastQuery.value }
+  const params = withClub({ ...lastQuery.value })
   ;['q', 'status', 'club_id', 'filed_by_user_id'].forEach((k) => {
     if (params[k] === '' || params[k] == null) delete params[k]
   })
@@ -61,7 +64,7 @@ const fetchAll = async (patch = {}, force = true) => {
 
 onMounted(async () => {
   await Promise.all([
-    fetchAll({ page: 1, limit: 10 }),
+    fetchAll({ page: 1, limit: 10, club_id: isClub ? activeClubId : '' }),
     clubStore.fetchAll({ page: 1, limit: 200, officer: true }, true),
     userStore.fetchAll({ page: 1, limit: 200 }, true),
   ])

@@ -17,6 +17,7 @@ import AnnualPlansCalendarModal from '@/components/annualPlan/AnnualPlansCalenda
 
 import { useAuthStore } from '@/stores/auth'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
+import { useClubScope } from '@/utils/clubScope'
 import axiosInstance from '@/plugins/axiosConfig'
 
 import {
@@ -67,15 +68,17 @@ const lastQuery = ref({
     filed_by_user_id: '',
     approver_user_id: '',
 })
+const { isClub, activeClubId, withClub } = useClubScope()
+
 const fetchAll = async (patch = {}, force = true) => {
     lastQuery.value = { ...lastQuery.value, ...patch }
-    const params = { ...lastQuery.value }
+    const params = withClub({ ...lastQuery.value })
         ;['q', 'status', 'school_year', 'club_id', 'filed_by_user_id', 'approver_user_id'].forEach(k => {
             if (params[k] === '' || params[k] == null) delete params[k]
         })
     await store.fetchAll(params, force)
 }
-onMounted(async () => { await fetchAll({ page: 1, limit: 10 }) })
+onMounted(async () => { await fetchAll({ page: 1, limit: 10, club_id: isClub ? activeClubId : '' }) })
 
 const dataWrap = computed(() => ({
     total: store.items.total || 0,
@@ -339,7 +342,7 @@ const openAttachments = async (row) => {
     </LayoutAuthenticated>
 
     <!-- Modals -->
-    <AnnualPlanFormModal v-model="createVisible" mode="create" @submit="onCreateSubmit" />
+    <AnnualPlanFormModal v-model="createVisible" mode="create" :locked-club-id="isClub ? activeClubId : ''" @submit="onCreateSubmit" />
     <AnnualPlanFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}" @submit="onEditSubmit" />
     <AnnualPlanAttachmentsModal v-model="attachVisible" :row="attachRow" />
     <AnnualPlansCalendarModal v-model="calendarVisible" @open="openFromCalendar" />

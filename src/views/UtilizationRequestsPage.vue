@@ -28,6 +28,7 @@ import { printUtilizationRequestPdf, buildUtilizationRequestPdfDoc } from '@/uti
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
+import { useClubScope } from '@/utils/clubScope'
 
 import {
     mdiTableBorder,
@@ -41,6 +42,7 @@ import {
 } from '@mdi/js'
 
 const store = useUtilizationRequestStore()
+const { isClub, activeClubId, withClub } = useClubScope()
 const authStore = useAuthStore()
 const userStore = useUserStore()
 
@@ -145,7 +147,7 @@ const endRange = computed({
 const fetchAll = async (patch = {}, force = true) => {
     lastQuery.value = { ...lastQuery.value, ...patch }
 
-    const params = { ...lastQuery.value }
+    const params = withClub({ ...lastQuery.value })
         ;[
             'q',
             'status',
@@ -166,7 +168,7 @@ const fetchAll = async (patch = {}, force = true) => {
 }
 
 onMounted(async () => {
-    await fetchAll({ page: 1, limit: 10 })
+    await fetchAll({ page: 1, limit: 10, club_id: isClub ? activeClubId : '' })
 })
 
 /* ---------- TABLE DATA WRAP ---------- */

@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
+import { compressImage } from '@/utils/imageCompression'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -25,6 +26,7 @@ import {
     mdiAccount,
     mdiRefresh,
 } from '@mdi/js'
+import { mdiCameraPlus } from '@mdi/js'
 
 const route = useRoute()
 const clubStore = useClubStore()
@@ -39,20 +41,27 @@ const API_ROOT = import.meta.env.VITE_API_ROOT_URL || ''
 // ---- Fetch club by id from route ----
 const clubId = computed(() => route.params.id)
 const loading = ref(false)
-onMounted(async () => {
-    if (clubId.value) {
-        loading.value = true
-        try {
-            await clubStore.fetchById(clubId.value)
-            // Prefetch club-scoped approved items for calendar
-            await Promise.allSettled([
-                adStore.fetchAll({ status: 'approved', club_id: clubId.value, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
-                urStore.fetchAll({ status: 'approved', club_id: clubId.value, limit: 500, order: 'ASC', sort: 'start_at' }, true),
-                apStore.fetchAll({ status: 'approved', club_id: clubId.value, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
-            ])
-        } finally {
-            loading.value = false
-        }
+
+const loadClubData = async (id) => {
+    if (!id) return
+    loading.value = true
+    try {
+        await clubStore.fetchById(id)
+        // Prefetch club-scoped approved items for calendar
+        await Promise.allSettled([
+            adStore.fetchAll({ status: 'approved', club_id: id, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
+            urStore.fetchAll({ status: 'approved', club_id: id, limit: 500, order: 'ASC', sort: 'start_at' }, true),
+            apStore.fetchAll({ status: 'approved', club_id: id, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
+        ])
+    } finally {
+        loading.value = false
+    }
+}
+
+onMounted(async () => { await loadClubData(clubId.value) })
+watch(() => clubId.value, async (newId, oldId) => {
+    if (String(newId) !== String(oldId)) {
+        await loadClubData(newId)
     }
 })
 
@@ -77,6 +86,60 @@ const website = computed(() => club.value.website || '')
 const email = computed(() => club.value.email || '')
 const phone = computed(() => club.value.phone || '')
 const isActive = computed(() => club.value.is_active !== false)
+
+// ---- Permissions: who can edit media ----
+const role = computed(() => String(auth.user?.role || '').toLowerCase())
+const canEditClub = computed(() => ['admin','manager','student_officer'].includes(role.value))
+
+// ---- Upload handlers (logo & banner) ----
+const logoInput = ref(null)
+const bannerInput = ref(null)
+const uploadingLogo = ref(false)
+const uploadingBanner = ref(false)
+
+const handleLogoChange = async (e) => {
+    const file = e?.target?.files?.[0]
+    if (!file || !clubId.value) return
+    uploadingLogo.value = true
+    try {
+        const dataUrl = await compressImage(file, {
+            maxWidth: 512,
+            maxHeight: 512,
+            quality: 0.8,
+            mimeType: 'image/jpeg',
+            maxBytes: 200 * 1024,
+            asFile: false,
+            outName: (file.name ? file.name.replace(/\.[^.]+$/, '') : 'logo') + '.jpg',
+        })
+        await clubStore.updateById(clubId.value, { logo: dataUrl })
+        if (clubStore.selectedClub && String(clubStore.selectedClub.id) === String(clubId.value)) {
+            clubStore.selectedClub = { ...clubStore.selectedClub, logo: dataUrl }
+        }
+    } catch (err) { console.error('Upload logo failed', err) }
+    finally { uploadingLogo.value = false; if (e?.target) e.target.value = '' }
+}
+
+const handleBannerChange = async (e) => {
+    const file = e?.target?.files?.[0]
+    if (!file || !clubId.value) return
+    uploadingBanner.value = true
+    try {
+        const dataUrl = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1080,
+            quality: 0.82,
+            mimeType: 'image/jpeg',
+            maxBytes: 600 * 1024,
+            asFile: false,
+            outName: (file.name ? file.name.replace(/\.[^.]+$/, '') : 'banner') + '.jpg',
+        })
+        await clubStore.updateById(clubId.value, { banner: dataUrl })
+        if (clubStore.selectedClub && String(clubStore.selectedClub.id) === String(clubId.value)) {
+            clubStore.selectedClub = { ...clubStore.selectedClub, banner: dataUrl }
+        }
+    } catch (err) { console.error('Upload banner failed', err) }
+    finally { uploadingBanner.value = false; if (e?.target) e.target.value = '' }
+}
 
 // ---- Members (users on the club with through UserClub) ----
 const membersRaw = computed(() => (Array.isArray(club.value.users) ? club.value.users : []))
@@ -330,6 +393,31 @@ function onEventClick(info) {
                         class="flex h-full w-full items-center justify-center bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-500">
                         <span class="text-sm">No banner</span>
                     </div>
+
+                    <!-- Full-area invisible picker (guarded by role) -->
+                    <input
+                        v-if="canEditClub"
+                        ref="bannerInput"
+                        type="file"
+                        accept="image/*"
+                        class="absolute inset-0 opacity-0 cursor-pointer"
+                        :disabled="uploadingBanner"
+                        @change="handleBannerChange"
+                    />
+
+                    <!-- Visual helper button -->
+                    <button
+                        v-if="canEditClub"
+                        type="button"
+                        class="absolute right-3 bottom-3 inline-flex items-center gap-2 rounded-xl bg-white/90 px-3 py-1.5 text-xs shadow hover:bg-white z-10 disabled:opacity-60"
+                        :disabled="uploadingBanner"
+                        @click="bannerInput?.click()"
+                    >
+                        <svg style="width:18px;height:18px" viewBox="0 0 24 24">
+                            <path :d="mdiCameraPlus" />
+                        </svg>
+                        <span>{{ uploadingBanner ? 'Uploading…' : 'Change banner' }}</span>
+                    </button>
                 </div>
 
                 <!-- Logo + Basic info -->
@@ -337,12 +425,37 @@ function onEventClick(info) {
                     <div class="-mt-10 sm:-mt-12 flex flex-col sm:flex-row items-start sm:items-end gap-4">
                         <!-- Logo -->
                         <div
-                            class="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl border-4 border-white bg-gray-100 overflow-hidden shadow">
+                            class="relative h-24 w-24 sm:h-28 sm:w-28 rounded-2xl border-4 border-white bg-gray-100 overflow-hidden shadow">
                             <img v-if="logoUrl" :src="logoUrl" alt="Logo" class="h-full w-full object-cover" />
                             <div v-else
                                 class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-600 font-semibold">
                                 {{ initials(clubName) }}
                             </div>
+
+                            <!-- Hidden file input for logo -->
+                            <input
+                                v-if="canEditClub"
+                                ref="logoInput"
+                                type="file"
+                                accept="image/*"
+                                class="hidden"
+                                :disabled="uploadingLogo"
+                                @change="handleLogoChange"
+                            />
+
+                            <!-- Floating change button -->
+                            <button
+                                v-if="canEditClub"
+                                type="button"
+                                class="absolute right-1.5 bottom-1.5 inline-flex items-center justify-center rounded-lg bg-white/95 w-8 h-8 shadow ring-1 ring-gray-200 hover:bg-white disabled:opacity-60"
+                                :disabled="uploadingLogo"
+                                @click="logoInput?.click()"
+                                title="Change logo"
+                            >
+                                <svg style="width:18px;height:18px" viewBox="0 0 24 24">
+                                    <path :d="mdiCameraPlus" />
+                                </svg>
+                            </button>
                         </div>
 
                         <!-- Texts -->

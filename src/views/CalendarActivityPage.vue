@@ -10,6 +10,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
+import { useClubScope } from '@/utils/clubScope'
 import EventDetailsModal from '@/components/commons/EventDetailsModal.vue'
 
 const timeZone = 'Asia/Manila'
@@ -27,13 +28,14 @@ const selectedEvent = ref(null)
 const loading = computed(() => adStore.isLoading || urStore.isLoading || apStore.isLoading)
 const errorMsg = computed(() => adStore.error || urStore.error || apStore.error)
 
-const fetchParams = { status: 'approved', limit: 1000, officer: 'true', order: 'ASC', sort: 'date_of_implementation' }
+const { isClub, activeClubId, withClub } = useClubScope()
+const fetchParams = withClub({ status: 'approved', limit: 1000, officer: 'true', order: 'ASC', sort: 'date_of_implementation' })
 
 onMounted(async () => {
     await Promise.allSettled([
         adStore.fetchAll(fetchParams, true),
-        urStore.fetchAll({ status: 'approved', limit: 1000, officer: 'true', order: 'ASC', sort: 'start_at' }, true),
-        apStore.fetchAll({ status: 'approved', limit: 1000, officer: 'true', order: 'ASC', sort: 'approved_at' }, true),
+        urStore.fetchAll(withClub({ status: 'approved', limit: 1000, officer: 'true', order: 'ASC', sort: 'start_at' }), true),
+        apStore.fetchAll(withClub({ status: 'approved', limit: 1000, officer: 'true', order: 'ASC', sort: 'approved_at' }), true),
     ])
 })
 

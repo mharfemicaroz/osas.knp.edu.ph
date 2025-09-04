@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useClubStore } from '@/stores/club'
 import { useUserStore } from '@/stores/user'
+import { useClubScope } from '@/utils/clubScope'
 
 import {
     mdiTableBorder,
@@ -38,6 +39,7 @@ const store = useActivityDesignStore()
 const authStore = useAuthStore()
 const clubStore = useClubStore()
 const userStore = useUserStore()
+const { isClub, activeClubId, withClub } = useClubScope()
 
 /* --- date range pickers (2-in-1) --- */
 const dpRangeCommon = {
@@ -115,7 +117,7 @@ const fetchAll = async (patch = {}, force = true) => {
         lastQuery.value.officer = true
     }
 
-    const params = { ...lastQuery.value }
+    const params = withClub({ ...lastQuery.value })
         ;[
             'q', 'status', 'nature_of_activity', 'school_year', 'semester',
             'club_id', 'filed_by_user_id', 'date_filed_from', 'date_filed_to',
@@ -130,7 +132,7 @@ const fetchAll = async (patch = {}, force = true) => {
 
 onMounted(async () => {
     await Promise.all([
-        fetchAll({ page: 1, limit: 10 }),
+        fetchAll({ page: 1, limit: 10, club_id: isClub ? activeClubId : '' }),
         clubStore.fetchAll({ page: 1, limit: 200, officer: true }, true),
         userStore.fetchAll({ page: 1, limit: 200 }, true),
     ])
@@ -654,7 +656,12 @@ const resetFilters = async () => {
         </SectionMain>
     </LayoutAuthenticated>
 
-    <ActivityDesignFormModal v-model="createVisible" mode="create" @submit="onCreateSubmit" />
+    <ActivityDesignFormModal
+      v-model="createVisible"
+      mode="create"
+      :locked-club-id="isClub ? activeClubId : ''"
+      @submit="onCreateSubmit"
+    />
     <ActivityDesignFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}" @submit="onEditSubmit" />
 
     <ActivityAttachmentsModal v-model="attachVisible" :row="attachRow" />

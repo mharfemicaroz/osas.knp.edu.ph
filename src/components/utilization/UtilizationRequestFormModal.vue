@@ -1,6 +1,7 @@
 <!-- src/components/utilization/UtilizationRequestFormModal.vue -->
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
+import { useClubScope } from '@/utils/clubScope'
 import { useAuthStore } from '@/stores/auth'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 import { useActivityDesignStore } from '@/stores/activityDesign'
@@ -66,15 +67,24 @@ const adStore = useActivityDesignStore()
 const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
 /* Approved Activity Designs for selection */
-const approvedAds = computed(() =>
-    Array.isArray(adStore.items?.data)
+const approvedAds = computed(() => {
+    const list = Array.isArray(adStore.items?.data)
         ? adStore.items.data.filter((x) => String(x.status).toLowerCase() === 'approved')
         : []
-)
+    if (isClub.value && activeClubId.value) {
+        const cid = Number(activeClubId.value)
+        return list.filter(x => Number(x.club_id || x.club?.id) === cid)
+    }
+    return list
+})
+
+const { isClub, activeClubId } = useClubScope()
 
 onMounted(async () => {
-    // fetch approved activity designs for the select
-    await adStore.fetchAll({ page: 1, limit: 200, status: 'approved', officer: true }, true)
+    // fetch approved activity designs for the select (scoped by club if set)
+    const base = { page: 1, limit: 200, status: 'approved', officer: true }
+    const params = isClub.value && activeClubId.value ? { ...base, club_id: activeClubId.value } : base
+    await adStore.fetchAll(params, true)
 })
 
 const form = ref({ ...props.initial })

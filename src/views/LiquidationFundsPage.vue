@@ -21,6 +21,7 @@ import LiquidationAttachmentsModal from '@/components/liquidation/LiquidationAtt
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
 import { useLiquidationFundStore } from '@/stores/liquidationFund'
+import { useClubScope } from '@/utils/clubScope'
 
 import { printLiquidationFormPdf, buildLiquidationFormPdfDoc } from '@/utils/printLiquidationFormPdf'
 
@@ -80,16 +81,18 @@ const filedRange = computed({
 })
 
 /* ---------- DATA FETCH ---------- */
+const { isClub, activeClubId, withClub } = useClubScope()
+
 const fetchAll = async (patch = {}, force = true) => {
     lastQuery.value = { ...lastQuery.value, ...patch }
-    const params = { ...lastQuery.value }
+    const params = withClub({ ...lastQuery.value })
         ;['q', 'status', 'activity_design_id', 'filed_by_user_id', 'date_filed_from', 'date_filed_to']
             .forEach(k => { if (params[k] === '' || params[k] == null) delete params[k] })
     await store.fetchAll(params, force)
 }
 
 onMounted(async () => {
-    await fetchAll({ page: 1, limit: 10 })
+    await fetchAll({ page: 1, limit: 10, club_id: isClub ? activeClubId : '' })
 })
 
 /* ---------- TABLE DATA WRAP ---------- */

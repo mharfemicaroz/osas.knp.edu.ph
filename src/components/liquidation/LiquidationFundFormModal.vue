@@ -5,6 +5,7 @@ import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
 import { useLiquidationFundStore } from '@/stores/liquidationFund'
 import { useActivityDesignStore } from '@/stores/activityDesign'
+import { useClubScope } from '@/utils/clubScope'
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -44,14 +45,22 @@ const lfStore = useLiquidationFundStore()
 const adStore = useActivityDesignStore()
 const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
-const approvedAds = computed(() =>
-    Array.isArray(adStore.items?.data)
+const { isClub, activeClubId } = useClubScope()
+const approvedAds = computed(() => {
+    const list = Array.isArray(adStore.items?.data)
         ? adStore.items.data.filter((x) => String(x.status).toLowerCase() === 'approved')
         : []
-)
+    if (isClub.value && activeClubId.value) {
+        const cid = Number(activeClubId.value)
+        return list.filter(x => Number(x.club_id || x.club?.id) === cid)
+    }
+    return list
+})
 
 onMounted(async () => {
-    await adStore.fetchAll({ page: 1, limit: 200, status: 'approved' }, true)
+    const base = { page: 1, limit: 200, status: 'approved' }
+    const params = isClub.value && activeClubId.value ? { ...base, club_id: activeClubId.value } : base
+    await adStore.fetchAll(params, true)
 })
 
 const form = ref(structuredClone(props.initial))

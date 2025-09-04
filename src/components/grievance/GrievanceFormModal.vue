@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useClubStore } from '@/stores/club'
 import { useUserStore } from '@/stores/user'
 import { useGrievanceStore } from '@/stores/grievance'
+import { useClubScope } from '@/utils/clubScope'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -39,6 +40,7 @@ const currentUserId = computed(() => auth.user?.id || null)
 const role = computed(() => String(auth.user?.role || '').toLowerCase())
 const isModerator = computed(() => ['admin', 'manager'].includes(role.value))
 
+const { isClub, activeClubId } = useClubScope()
 const form = ref({ ...props.initial })
 const errors = ref({})
 const uploading = ref(false)
@@ -52,6 +54,9 @@ onMounted(async () => {
   if (!Array.isArray(userStore.users?.data) || !userStore.users.data.length) {
     await userStore.fetchAll({ page: 1, limit: 200 }, true)
   }
+  if (isClub.value && activeClubId.value && !form.value.club_id) {
+    form.value.club_id = Number(activeClubId.value)
+  }
 })
 
 watch(
@@ -60,6 +65,9 @@ watch(
     form.value = { ...v }
     if (!form.value.filed_by_user_id && currentUserId.value) {
       form.value.filed_by_user_id = currentUserId.value
+    }
+    if (!form.value.club_id && isClub.value && activeClubId.value) {
+      form.value.club_id = Number(activeClubId.value)
     }
     errors.value = {}
   },
@@ -166,9 +174,9 @@ const removeAttachment = async (attIdOrIndex) => {
 
         <div>
           <label class="block mb-0.5">Club <span class="text-red-500">*</span></label>
-          <select v-model="form.club_id" class="w-full border rounded px-2 py-1.5" :disabled="readOnly">
+          <select v-model="form.club_id" class="w-full border rounded px-2 py-1.5" :disabled="readOnly || (isClub && !!activeClubId)">
             <option value="">Select club…</option>
-            <option v-for="c in (clubStore.clubs.data || [])" :key="c.id" :value="c.id">{{ c.name }}</option>
+            <option v-for="c in (isClub && activeClubId ? (clubStore.clubs.data || []).filter(cc => Number(cc.id) === Number(activeClubId)) : (clubStore.clubs.data || []))" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
           <p v-if="errors.club_id" class="text-red-600 text-[11px] mt-0.5">{{ errors.club_id }}</p>
         </div>

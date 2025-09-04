@@ -46,7 +46,8 @@ export default {
 
   async updateById(id, data) {
     const { data: res } = await axiosInstance.put(`/clubs/${id}`, data);
-    return res;
+    // Some endpoints wrap as { message, data }; normalize to the actual club object
+    return res?.data ?? res;
   },
 
   async delete(id) {

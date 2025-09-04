@@ -8,6 +8,7 @@ import { useAnnualPlanStore } from '@/stores/annualPlan'
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
     mode: { type: String, default: 'create' }, // 'create' | 'edit'
+    lockedClubId: { type: [String, Number], default: '' },
     initial: {
         type: Object,
         default: () => ({
@@ -88,11 +89,16 @@ const clubNameById = (id) => {
 
 /* ---------- annual plan computed lists ---------- */
 // show all approved plans; club will auto-lock to the plan's club after selection
-const approvedAnnualPlans = computed(() =>
-    Array.isArray(apStore.items?.data)
+const approvedAnnualPlans = computed(() => {
+    const list = Array.isArray(apStore.items?.data)
         ? apStore.items.data.filter(p => String(p.status || '').toLowerCase() === 'approved')
         : []
-)
+    if (props.lockedClubId) {
+        const cid = Number(props.lockedClubId)
+        return list.filter(p => Number(p.club_id) === cid)
+    }
+    return list
+})
 
 const selectedAnnualPlan = computed(() => {
     const id = Number(form.value.annual_plan_id || 0)
@@ -121,6 +127,9 @@ onMounted(async () => {
         await clubStore.fetchAll({ page: 1, limit: 200 }, true)
     }
     await apStore.fetchAll({ page: 1, limit: 500, status: 'approved' }, true)
+    if (props.lockedClubId) {
+        form.value.club_id = Number(props.lockedClubId)
+    }
 })
 
 /* ---------- sync props → form ---------- */
@@ -445,7 +454,7 @@ const onSubmit = () => {
                             by Annual Plan</span>
                     </label>
                     <select v-model="form.club_id" class="w-full border rounded px-2 py-1.5"
-                        :disabled="readOnly || isApLinked">
+                        :disabled="readOnly || isApLinked || !!lockedClubId">
                         <option value="">Select club…</option>
                         <option v-for="c in (clubStore.clubs.data || [])" :key="c.id" :value="c.id">{{ c.name }}
                         </option>
