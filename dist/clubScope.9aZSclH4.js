@@ -1,1 +1,0 @@
-import{ac as l}from"./index.CE3HtnZL.js";import{an as c}from"./SectionMain.B1qeU-9X.js";function a(){const e=c(),{isClub:o,activeClubId:t}=l(e);return{isClub:o,activeClubId:t,withClub:(i={})=>{const u={...i||{}};return o.value&&t.value&&(!("club_id"in u)||u.club_id==null||u.club_id==="")&&(u.club_id=t.value),u}}}export{a as u};

@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 
@@ -59,7 +59,13 @@ function normalizeAvatar(user) {
 }
 
 const avatarSrc = computed(() => {
-    return normalizeAvatar(authStore.user) || normalizeAvatar(userStore.selectedUser) || "";
+    // Always reflect the signed-in user's avatar; if missing, fall back to
+    // the userStore.selectedUser only when it matches the signed-in user id.
+    const authAvatar = normalizeAvatar(authStore.user)
+    if (authAvatar) return authAvatar
+    const su = userStore.selectedUser
+    if (su && su.id === authStore.user?.id) return normalizeAvatar(su)
+    return ""
 });
 
 const doLogout = async () => {
@@ -83,4 +89,19 @@ onMounted(() => {
         userStore.fetchById(uid).catch(() => null);
     }
 });
+
+// Keep authStore.user enriched with avatar/cover when we fetch self into userStore
+watch(
+  () => userStore.selectedUser,
+  (u) => {
+    const uid = authStore.user?.id
+    if (!u || !uid || u.id !== uid) return
+    const next = { ...authStore.user }
+    const av = normalizeAvatar(u)
+    if (av) next.avatar = av
+    const cv = typeof u?.cover === 'string' ? u.cover : (u?.cover?.image || u?.cover?.url || '')
+    if (cv) next.cover = cv
+    authStore.user = next
+  }
+)
 </script>

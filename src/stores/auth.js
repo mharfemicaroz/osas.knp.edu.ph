@@ -62,6 +62,10 @@ export const useAuthStore = defineStore("auth", () => {
           username: data.userdata.username,
         };
         localStorage.setItem("userData", JSON.stringify(user.value));
+        // Clear any previous club context on new account
+        try { localStorage.removeItem('appContext'); } catch {}
+        try { const mod = await import('@/stores/appContext'); mod.useAppContextStore().setUserContext() } catch {}
+
         router.push("/profile");
         return { ok: true };
       }
@@ -115,6 +119,13 @@ export const useAuthStore = defineStore("auth", () => {
       console.log("user", user.value);
       localStorage.setItem("userData", JSON.stringify(user.value));
 
+      // Reset any persisted club context on login (back to profile)
+      try { localStorage.removeItem('appContext'); } catch {}
+      try {
+        const mod = await import('@/stores/appContext')
+        mod.useAppContextStore().setUserContext()
+      } catch {}
+
       router.push("/profile");
       return { ok: true };
     } catch (e) {
@@ -147,6 +158,13 @@ export const useAuthStore = defineStore("auth", () => {
         username: response.data.userdata.username,
       };
       localStorage.setItem("userData", JSON.stringify(user.value));
+
+      // Reset any persisted club context on 2FA verify (back to profile)
+      try { localStorage.removeItem('appContext'); } catch {}
+      try {
+        const mod = await import('@/stores/appContext')
+        mod.useAppContextStore().setUserContext()
+      } catch {}
 
       requires2FA.value = false;
       tempToken.value = null;
@@ -210,6 +228,9 @@ export const useAuthStore = defineStore("auth", () => {
     localStorage.removeItem("userData");
     localStorage.removeItem("requires2FA");
     localStorage.removeItem("tempToken");
+    try { localStorage.removeItem('appContext'); } catch {}
+
+    try { import('@/stores/appContext').then(mod => { try { mod.useAppContextStore().setUserContext() } catch {} }).catch(() => {}) } catch {}
 
     localStorage.setItem("logout", Date.now());
 
@@ -304,6 +325,9 @@ export const useAuthStore = defineStore("auth", () => {
       }
     }
 
+    // Clear any previous club context after SSO
+    try { localStorage.removeItem('appContext'); } catch {}
+    try { import('@/stores/appContext').then(mod => { try { mod.useAppContextStore().setUserContext() } catch {} }).catch(() => {}) } catch {}
     router.push("/profile");
     return true;
   };
