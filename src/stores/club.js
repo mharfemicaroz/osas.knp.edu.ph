@@ -16,6 +16,7 @@ export const useClubStore = defineStore("club", () => {
   const error = ref(null);
   const isLoaded = ref(false);
   const selectedClub = ref(null);
+  const permissionByClub = ref({}); // { [clubId]: { can_edit, member_role } }
 
   /* ---------------- helpers ---------------- */
   const upsertInList = (clubObj) => {
@@ -299,6 +300,23 @@ export const useClubStore = defineStore("club", () => {
     }
   };
 
+  // Permission: can current user edit media for club (server-driven)
+  const checkCanEditMedia = async (clubId, { force = false } = {}) => {
+    if (!clubId) return { can_edit: false, member_role: null };
+    const key = String(clubId)
+    if (!force && permissionByClub.value[key]) return permissionByClub.value[key]
+    try {
+      const res = await clubService.canEditMedia(clubId)
+      const val = { can_edit: !!res?.can_edit, member_role: res?.member_role || null }
+      permissionByClub.value[key] = val
+      return val
+    } catch (err) {
+      // don't throw; cache negative result
+      permissionByClub.value[key] = { can_edit: false, member_role: null }
+      return permissionByClub.value[key]
+    }
+  }
+
   const resetStore = () => {
     clubs.value = {
       total: 0,
@@ -316,6 +334,7 @@ export const useClubStore = defineStore("club", () => {
   return {
     clubs,
     selectedClub,
+    permissionByClub,
     isLoading,
     error,
     isLoaded,
@@ -333,6 +352,8 @@ export const useClubStore = defineStore("club", () => {
 
     uploadAttachment,
     deleteAttachment,
+
+    checkCanEditMedia,
 
     resetStore,
   };

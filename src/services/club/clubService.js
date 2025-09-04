@@ -50,6 +50,11 @@ export default {
     return res?.data ?? res;
   },
 
+  async canEditMedia(id) {
+    const { data } = await axiosInstance.get(`/clubs/${id}/can-edit-media`)
+    return { can_edit: !!data?.can_edit, member_role: data?.member_role || null }
+  },
+
   async delete(id) {
     const { data: res } = await axiosInstance.delete(`/clubs/${id}`);
     return res;

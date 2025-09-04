@@ -9,6 +9,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
+import { useUserStore } from '@/stores/user'
+// use store for permission check
 import { compressImage } from '@/utils/imageCompression'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -31,6 +33,7 @@ import { mdiCameraPlus } from '@mdi/js'
 const route = useRoute()
 const clubStore = useClubStore()
 const auth = useAuthStore()
+const userStore = useUserStore()
 const adStore = useActivityDesignStore()
 const urStore = useUtilizationRequestStore()
 const apStore = useAnnualPlanStore()
@@ -53,6 +56,8 @@ const loadClubData = async (id) => {
             urStore.fetchAll({ status: 'approved', club_id: id, limit: 500, order: 'ASC', sort: 'start_at' }, true),
             apStore.fetchAll({ status: 'approved', club_id: id, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
         ])
+        // Evaluate permission after loading club context
+        await evaluatePermission()
     } finally {
         loading.value = false
     }
@@ -64,6 +69,20 @@ watch(() => clubId.value, async (newId, oldId) => {
         await loadClubData(newId)
     }
 })
+
+// Prefetch all my clubs (with roles) for permissions
+const fetchMyMembership = async () => {
+    try {
+        const uid = auth.user?.id
+        if (!uid) return
+        await userStore.fetchUserClubs(uid, { force: true })
+    } catch {}
+}
+
+// Evaluate permission on mount and when dependencies change
+onMounted(() => { evaluatePermission() })
+watch(() => clubId.value, () => { evaluatePermission() })
+watch(() => auth.user?.id, () => { evaluatePermission() })
 
 // ---- Club data (fallback-safe) ----
 const club = computed(() => clubStore.selectedClub || {})
@@ -87,9 +106,18 @@ const email = computed(() => club.value.email || '')
 const phone = computed(() => club.value.phone || '')
 const isActive = computed(() => club.value.is_active !== false)
 
-// ---- Permissions: who can edit media ----
-const role = computed(() => String(auth.user?.role || '').toLowerCase())
-const canEditClub = computed(() => ['admin','manager','student_officer'].includes(role.value))
+// ---- Permissions: who can edit media (server-driven) ----
+const canEditClub = ref(false)
+const memberOfficerRole = ref('')
+const evaluatePermission = async () => {
+    try {
+        const id = clubId.value
+        if (!id) { canEditClub.value = false; return }
+        const res = await clubStore.checkCanEditMedia(id, { force: true })
+        canEditClub.value = !!res?.can_edit
+        memberOfficerRole.value = res?.member_role || ''
+    } catch { canEditClub.value = false }
+}
 
 // ---- Upload handlers (logo & banner) ----
 const logoInput = ref(null)
@@ -775,3 +803,4 @@ function onEventClick(info) {
     /* tailwind gray-900 */
 }
 </style>
+
