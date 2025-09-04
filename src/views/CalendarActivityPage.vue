@@ -10,6 +10,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
+import EventDetailsModal from '@/components/commons/EventDetailsModal.vue'
 
 const timeZone = 'Asia/Manila'
 const adStore = useActivityDesignStore()
@@ -19,6 +20,9 @@ const apStore = useAnnualPlanStore()
 const showAD = ref(true)
 const showUR = ref(true)
 const showAP = ref(true)
+
+const showEventModal = ref(false)
+const selectedEvent = ref(null)
 
 const loading = computed(() => adStore.isLoading || urStore.isLoading || apStore.isLoading)
 const errorMsg = computed(() => adStore.error || urStore.error || apStore.error)
@@ -58,7 +62,7 @@ const events = computed(() => {
                 title: `Activity: ${r.name_of_activity || r.reference_code}${club}`,
                 start,
                 allDay: true,
-                extendedProps: { type: 'Activity Design', ref: r.reference_code, club: r?.club },
+                extendedProps: { type: 'Activity Design', ref: r.reference_code, club: r?.club, record: r },
                 backgroundColor, borderColor, textColor
             })
         }
@@ -79,7 +83,7 @@ const events = computed(() => {
                 start,
                 end,
                 allDay: !r?.start_at || !r?.end_at,
-                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac },
+                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac, record: r },
                 backgroundColor, borderColor, textColor
             })
         }
@@ -97,7 +101,7 @@ const events = computed(() => {
                 title: `Annual Plan Approved${club}${sy}`,
                 start,
                 allDay: true,
-                extendedProps: { type: 'Annual Plan', ref: r.reference_code },
+                extendedProps: { type: 'Annual Plan', ref: r.reference_code, club: r?.club, record: r },
                 backgroundColor, borderColor, textColor
             })
         }
@@ -152,6 +156,27 @@ const isSmall = ref(false)
 const updateSize = () => { isSmall.value = window.innerWidth < 640 }
 onMounted(() => { updateSize(); window.addEventListener('resize', updateSize) })
 
+function onEventClick(info) {
+    try {
+        const ev = info?.event
+        // Normalize minimal event payload for the modal
+        selectedEvent.value = {
+            id: ev?.id,
+            title: ev?.title,
+            start: ev?.start,
+            end: ev?.end,
+            allDay: ev?.allDay,
+            backgroundColor: ev?.backgroundColor,
+            borderColor: ev?.borderColor,
+            textColor: ev?.textColor,
+            extendedProps: { ...(ev?.extendedProps || {}) },
+        }
+        showEventModal.value = true
+    } catch (e) {
+        // no-op
+    }
+}
+
 const calendarOptions = computed(() => ({
     plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
@@ -168,7 +193,8 @@ const calendarOptions = computed(() => ({
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: true },
     timeZone,
     events: events.value,
-    eventDidMount
+    eventDidMount,
+    eventClick: onEventClick,
 }))
 </script>
 
@@ -206,6 +232,8 @@ const calendarOptions = computed(() => ({
                 <div v-else class="w-full rounded-xl overflow-hidden border border-gray-200 bg-white shadow">
                     <FullCalendar :options="calendarOptions" />
                 </div>
+
+                <EventDetailsModal v-model="showEventModal" :event="selectedEvent" />
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div class="p-4 rounded-xl border bg-white shadow-sm border-blue-200">

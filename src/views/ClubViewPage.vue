@@ -15,6 +15,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
 import interactionPlugin from '@fullcalendar/interaction'
 import Badge from '@/components/commons/Badge.vue'
+import EventDetailsModal from '@/components/commons/EventDetailsModal.vue'
 import {
     mdiAccountGroup,
     mdiCalendar,
@@ -203,7 +204,7 @@ const events = computed(() => {
             const { backgroundColor, borderColor, textColor } = colorByType('AD')
             list.push({
                 id: `AD-${r.id}`, title: `Activity: ${r.name_of_activity || r.reference_code}`,
-                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code }, backgroundColor, borderColor, textColor
+                start, allDay: true, extendedProps: { type: 'Activity Design', ref: r.reference_code, club: r?.club, record: r }, backgroundColor, borderColor, textColor
             })
         }
     }
@@ -222,7 +223,7 @@ const events = computed(() => {
             const { backgroundColor, borderColor, textColor } = colorByType('UR')
             list.push({
                 id: `UR-${r.id}`, title: `Utilization${act}${facTxt}`, start, end, allDay: !r?.start_at || !r?.end_at,
-                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac }, backgroundColor, borderColor, textColor
+                extendedProps: { type: 'Utilization', ref: r.reference_code, facilities: fac, record: r }, backgroundColor, borderColor, textColor
             })
         }
     }
@@ -238,7 +239,7 @@ const events = computed(() => {
             const { backgroundColor, borderColor, textColor } = colorByType('AP')
             list.push({
                 id: `AP-${r.id}`, title: `Annual Plan Approved${sy}`, start, allDay: true,
-                extendedProps: { type: 'Annual Plan', ref: r.reference_code }, backgroundColor, borderColor, textColor
+                extendedProps: { type: 'Annual Plan', ref: r.reference_code, record: r }, backgroundColor, borderColor, textColor
             })
         }
     }
@@ -293,8 +294,28 @@ const calendarOptions = computed(() => ({
     // Force block rendering so background/text colors apply (not dot style)
     eventDisplay: 'block',
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: true },
-    timeZone, events: events.value, eventDidMount,
+    timeZone, events: events.value, eventDidMount, eventClick: onEventClick,
 }))
+
+const showEventModal = ref(false)
+const selectedEvent = ref(null)
+function onEventClick(info) {
+    try {
+        const ev = info?.event
+        selectedEvent.value = {
+            id: ev?.id,
+            title: ev?.title,
+            start: ev?.start,
+            end: ev?.end,
+            allDay: ev?.allDay,
+            backgroundColor: ev?.backgroundColor,
+            borderColor: ev?.borderColor,
+            textColor: ev?.textColor,
+            extendedProps: { ...(ev?.extendedProps || {}) },
+        }
+        showEventModal.value = true
+    } catch (e) { /* noop */ }
+}
 </script>
 
 <template>
@@ -501,66 +522,7 @@ const calendarOptions = computed(() => ({
                         </div>
                     </div>
 
-                    <!-- Club Calendar -->
-                    <div class="rounded-2xl border bg-white shadow-sm">
-                        <div class="border-b px-4 sm:px-6 py-3 flex items-center justify-between">
-                            <h3 class="text-sm font-semibold text-gray-800 inline-flex items-center gap-2">
-                                <svg style="width:18px;height:18px" viewBox="0 0 24 24">
-                                    <path :d="mdiCalendar" />
-                                </svg>
-                                Club Calendar
-                            </h3>
-                            <div class="flex items-center gap-2 text-xs">
-                                <label
-                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                                    <input type="checkbox" v-model="showAD" class="accent-blue-600">
-                                    <span>Activities</span>
-                                </label>
-                                <label
-                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <input type="checkbox" v-model="showUR" class="accent-emerald-600">
-                                    <span>Utilizations</span>
-                                </label>
-                                <label
-                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                                    <input type="checkbox" v-model="showAP" class="accent-amber-600">
-                                    <span>Annual Plans</span>
-                                </label>
-                                <button class="px-2 py-1 bg-white border rounded inline-flex items-center gap-1" @click="Promise.allSettled([
-                                    adStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
-                                    urStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'start_at' }, true),
-                                    apStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
-                                ])">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24">
-                                        <path :d="mdiRefresh" />
-                                    </svg>
-                                    Refresh
-                                </button>
-                            </div>
-                        </div>
-                        <div class="p-4 sm:p-6">
-                            <div class="w-full rounded-xl overflow-hidden border border-gray-200 bg-white">
-                                <FullCalendar :options="calendarOptions" />
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
-                                <div class="p-3 rounded-xl border bg-white shadow-sm border-blue-200">
-                                    <div class="text-xs uppercase tracking-wide text-blue-600 mb-1">Legend</div>
-                                    <div class="flex items-center gap-2"><span
-                                            class="w-3 h-3 rounded-sm bg-blue-600"></span> Activity Design</div>
-                                </div>
-                                <div class="p-3 rounded-xl border bg-white shadow-sm border-emerald-200">
-                                    <div class="text-xs uppercase tracking-wide text-emerald-600 mb-1">Legend</div>
-                                    <div class="flex items-center gap-2"><span
-                                            class="w-3 h-3 rounded-sm bg-emerald-600"></span> Utilization</div>
-                                </div>
-                                <div class="p-3 rounded-xl border bg-white shadow-sm border-amber-200">
-                                    <div class="text-xs uppercase tracking-wide text-amber-600 mb-1">Legend</div>
-                                    <div class="flex items-center gap-2"><span
-                                            class="w-3 h-3 rounded-sm bg-amber-600"></span> Annual Plan</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
 
                 <!-- Right: Club facts -->
@@ -613,6 +575,65 @@ const calendarOptions = computed(() => ({
                             <div class="flex items-center justify-between">
                                 <span>Phone</span>
                                 <span class="text-gray-500">{{ phone || '—' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full-width Club Calendar -->
+                <div class="lg:col-span-3">
+                    <div class="rounded-2xl border bg-white shadow-sm">
+                        <div class="border-b px-4 sm:px-6 py-3 flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-gray-800 inline-flex items-center gap-2">
+                                <svg style="width:18px;height:18px" viewBox="0 0 24 24">
+                                    <path :d="mdiCalendar" />
+                                </svg>
+                                Club Calendar
+                            </h3>
+                            <div class="flex items-center gap-2 text-xs">
+                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                    <input type="checkbox" v-model="showAD" class="accent-blue-600">
+                                    <span>Activities</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <input type="checkbox" v-model="showUR" class="accent-emerald-600">
+                                    <span>Utilizations</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                    <input type="checkbox" v-model="showAP" class="accent-amber-600">
+                                    <span>Annual Plans</span>
+                                </label>
+                                <button class="px-2 py-1 bg-white border rounded inline-flex items-center gap-1" @click="Promise.allSettled([
+                                    adStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'date_of_implementation' }, true),
+                                    urStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'start_at' }, true),
+                                    apStore.fetchAll({ status: 'approved', club_id: clubId, limit: 500, order: 'ASC', sort: 'approved_at' }, true),
+                                ])">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24">
+                                        <path :d="mdiRefresh" />
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 sm:p-6">
+                            <div class="w-full rounded-xl overflow-hidden border border-gray-200 bg-white">
+                                <FullCalendar :options="calendarOptions" />
+                            </div>
+                            <EventDetailsModal v-model="showEventModal" :event="selectedEvent" />
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
+                                <div class="p-3 rounded-xl border bg-white shadow-sm border-blue-200">
+                                    <div class="text-xs uppercase tracking-wide text-blue-600 mb-1">Legend</div>
+                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-blue-600"></span> Activity Design</div>
+                                </div>
+                                <div class="p-3 rounded-xl border bg-white shadow-sm border-emerald-200">
+                                    <div class="text-xs uppercase tracking-wide text-emerald-600 mb-1">Legend</div>
+                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-emerald-600"></span> Utilization</div>
+                                </div>
+                                <div class="p-3 rounded-xl border bg-white shadow-sm border-amber-200">
+                                    <div class="text-xs uppercase tracking-wide text-amber-600 mb-1">Legend</div>
+                                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-amber-600"></span> Annual Plan</div>
+                                </div>
                             </div>
                         </div>
                     </div>
