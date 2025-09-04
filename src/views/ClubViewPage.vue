@@ -290,6 +290,8 @@ const calendarOptions = computed(() => ({
     initialView: 'dayGridMonth',
     headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
     height: 'auto', stickyHeaderDates: true, dayMaxEvents: 3, navLinks: true,
+    // Force block rendering so background/text colors apply (not dot style)
+    eventDisplay: 'block',
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: true },
     timeZone, events: events.value, eventDidMount,
 }))
