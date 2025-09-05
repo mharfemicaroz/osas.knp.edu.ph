@@ -168,9 +168,8 @@ const removeFacility = (i) => {
 /* ---------- Equipment (strict select names; unique) ---------- */
 const addEquip = () => {
     if (!Array.isArray(form.value.equipment_items)) form.value.equipment_items = []
-    const already = new Set((form.value.equipment_items || []).map((x) => x?.name).filter(Boolean))
-    const nextName = EQUIPMENT_OPTIONS.find((n) => !already.has(n)) || EQUIPMENT_OPTIONS[0]
-    if (!already.has(nextName)) form.value.equipment_items.push({ name: nextName, qty: 1, unit: '' })
+    // Start with an empty selection so users explicitly pick an item
+    form.value.equipment_items.push({ name: '', qty: 1, unit: '' })
 }
 const removeEquip = (idx) => {
     form.value.equipment_items.splice(idx, 1)
@@ -282,7 +281,7 @@ const onSubmit = () => {
 
 <template>
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-        <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg w-[720px] max-h-[85vh] overflow-y-auto">
+        <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg w-[95vw] md:w-[720px] max-h-[90vh] overflow-y-auto">
             <!-- Header -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
@@ -329,7 +328,7 @@ const onSubmit = () => {
                 </div>
                 <div>
                     <label class="block mb-0.5">Start Time <span class="text-red-500">*</span></label>
-                    <input v-model="form.start_time" type="time" class="w-full border rounded px-2 py-1.5"
+                    <input v-model="form.start_time" type="time" class="w-full border rounded px-2 py-1.5" placeholder="HH:MM"
                         :disabled="readOnly" :class="errors.start_time ? 'border-red-500' : ''" />
                     <p v-if="errors.start_time" class="text-red-600 text-[11px] mt-0.5">{{ errors.start_time }}</p>
                 </div>
@@ -342,7 +341,7 @@ const onSubmit = () => {
                 </div>
                 <div>
                     <label class="block mb-0.5">End Time <span class="text-red-500">*</span></label>
-                    <input v-model="form.end_time" type="time" class="w-full border rounded px-2 py-1.5"
+                    <input v-model="form.end_time" type="time" class="w-full border rounded px-2 py-1.5" placeholder="HH:MM"
                         :disabled="readOnly" :class="errors.end_time ? 'border-red-500' : ''" />
                     <p v-if="errors.end_time" class="text-red-600 text-[11px] mt-0.5">{{ errors.end_time }}</p>
                 </div>
@@ -401,6 +400,7 @@ const onSubmit = () => {
                                     <select v-model="it.name" class="w-full border rounded px-2 py-1.5"
                                         :disabled="readOnly"
                                         @change="() => { if (it.qty == null || it.qty <= 0) it.qty = 1 }">
+                                        <option disabled value="">Select item…</option>
                                         <option
                                             v-for="opt in remainingEquipOptionsFor(idx).concat(it.name && !remainingEquipOptionsFor(idx).includes(it.name) ? [it.name] : [])"
                                             :key="opt" :value="opt">
@@ -413,7 +413,7 @@ const onSubmit = () => {
                                 </td>
                                 <td class="p-1.5">
                                     <input v-model.number="it.qty" type="number" min="1"
-                                        class="w-20 border rounded px-2 py-1.5" :disabled="readOnly" />
+                                        class="w-20 border rounded px-2 py-1.5" :disabled="readOnly" placeholder="1" />
                                 </td>
                                 <td class="p-1.5">
                                     <input v-model="it.unit" class="w-24 border rounded px-2 py-1.5"
@@ -438,7 +438,7 @@ const onSubmit = () => {
                 <div>
                     <label class="block mb-0.5">Utilization Details (duration, purpose, notes)</label>
                     <textarea v-model="form.utilization_details" rows="3" class="w-full border rounded px-2 py-1.5"
-                        :disabled="readOnly" />
+                        :disabled="readOnly" placeholder="e.g., 2 hours practice; stage and sound system" />
                 </div>
                 <div v-if="isAdmin">
                     <label class="block mb-0.5">Filer Name Override (optional)</label>
@@ -451,7 +451,7 @@ const onSubmit = () => {
                 <div>
                     <label class="block mb-0.5">Remarks</label>
                     <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2 py-1.5"
-                        :disabled="readOnly" />
+                        :disabled="readOnly" placeholder="Optional notes for approvers" />
                 </div>
             </div>
 

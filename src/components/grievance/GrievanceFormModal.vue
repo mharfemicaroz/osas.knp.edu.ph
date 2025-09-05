@@ -168,6 +168,7 @@ const removeAttachment = async (attIdOrIndex) => {
         <div class="md:col-span-2">
           <label class="block mb-0.5">Title <span class="text-red-500">*</span></label>
           <input v-model="form.title" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
+                 placeholder="e.g., Complaint about equipment request"
                  :class="errors.title ? 'border-red-500' : ''" />
           <p v-if="errors.title" class="text-red-600 text-[11px] mt-0.5">{{ errors.title }}</p>
         </div>
@@ -191,6 +192,7 @@ const removeAttachment = async (attIdOrIndex) => {
         <div class="md:col-span-2">
           <label class="block mb-0.5">Description <span class="text-red-500">*</span></label>
           <textarea v-model="form.description" rows="5" class="w-full border rounded px-2 py-1.5"
+                    placeholder="Describe the issue, when it happened, and any context"
                     :disabled="readOnly"
                     :class="errors.description ? 'border-red-500' : ''" />
           <p v-if="errors.description" class="text-red-600 text-[11px] mt-0.5">{{ errors.description }}</p>
@@ -216,7 +218,8 @@ const removeAttachment = async (attIdOrIndex) => {
 
         <div v-if="isModerator" class="md:col-span-2">
           <label class="block mb-0.5">Resolution Notes</label>
-          <textarea v-model="form.resolution_notes" rows="3" class="w-full border rounded px-2 py-1.5" />
+          <textarea v-model="form.resolution_notes" rows="3" class="w-full border rounded px-2 py-1.5"
+                    placeholder="Steps taken, resolution, or decision (visible to moderators)" />
         </div>
       </div>
 

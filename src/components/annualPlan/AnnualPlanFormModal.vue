@@ -153,7 +153,8 @@ const onSubmit = () => {
                 </div>
                 <div>
                     <label class="block mb-1">Remarks</label>
-                    <input v-model="form.remarks" class="w-full border rounded px-2.5 py-2" :disabled="readOnly" />
+                    <input v-model="form.remarks" class="w-full border rounded px-2.5 py-2" :disabled="readOnly"
+                        placeholder="Optional remarks" />
                 </div>
             </div>
 
@@ -183,24 +184,25 @@ const onSubmit = () => {
                             <tr v-for="(p, idx) in form.plans" :key="idx" class="border-t">
                                 <td class="p-2">
                                     <input v-model="p.item" class="w-40 border rounded px-2 py-1" :disabled="readOnly"
+                                        placeholder="Item name"
                                         :class="errors[`plans_${idx}_item`] ? 'border-red-500' : ''" />
                                 </td>
                                 <td class="p-2"><input v-model="p.description" class="w-60 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="Short description" /></td>
                                 <td class="p-2">
                                     <input type="date" v-model="p.date_of_implementation"
-                                        class="border rounded px-2 py-1" :disabled="readOnly"
+                                        class="border rounded px-2 py-1" :disabled="readOnly" placeholder="YYYY-MM-DD"
                                         :class="errors[`plans_${idx}_date`] ? 'border-red-500' : ''" />
                                 </td>
                                 <td class="p-2">
                                     <input type="number" step="0.01" min="0" v-model.number="p.funds"
-                                        class="w-28 border rounded px-2 py-1" :disabled="readOnly"
+                                        class="w-28 border rounded px-2 py-1" :disabled="readOnly" placeholder="0.00"
                                         :class="errors[`plans_${idx}_funds`] ? 'border-red-500' : ''" />
                                 </td>
                                 <td class="p-2"><input v-model="p.venue" class="w-40 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="Venue / location" /></td>
                                 <td class="p-2"><input v-model="p.notes" class="w-52 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="Notes (optional)" /></td>
                                 <td class="p-2 text-right">
                                     <button class="px-2 py-1 bg-red-50 text-red-700 rounded" :disabled="readOnly"
                                         @click="removePlanRow(idx)">Remove</button>

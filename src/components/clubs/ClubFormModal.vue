@@ -183,7 +183,8 @@ const onSubmit = () => {
                 <div class="col-span-2">
                     <label class="block mb-1">Description</label>
                     <textarea v-model="form.description"
-                        class="w-full border rounded px-3 py-2 focus:outline-none focus:ring" rows="3" />
+                        class="w-full border rounded px-3 py-2 focus:outline-none focus:ring" rows="3"
+                        placeholder="Brief description of the club (mission, focus, etc.)" />
                 </div>
 
                 <div>
