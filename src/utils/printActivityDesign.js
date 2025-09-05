@@ -107,7 +107,7 @@ async function drawStatusAndVerifyRow(doc, a, startY) {
     : a.date_filed
     ? fmt(a.date_filed)
     : "—";
-  const displayUrl = `osas.knp.edu.ph/verify-actdesign?id=${String(idOrRef)}`;
+  const displayUrl = `osas.knp.edu.ph/#/verify-actdesign?id=${String(idOrRef)}`;
 
   // Use a plain 1-row table; we will draw custom content inside each cell
   autoTable(doc, {

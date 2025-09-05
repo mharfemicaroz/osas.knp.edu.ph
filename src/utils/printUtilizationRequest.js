@@ -142,7 +142,9 @@ async function drawStatusAndVerifyRow(doc, u, startY) {
     : u.date_filed
     ? fmtDate(u.date_filed)
     : "—";
-  const displayUrl = `osas.knp.edu.ph/verify-utilization?id=${String(idOrRef)}`;
+  const displayUrl = `osas.knp.edu.ph/#/verify-utilization?id=${String(
+    idOrRef
+  )}`;
 
   autoTable(doc, {
     startY,
