@@ -100,6 +100,13 @@ const openView = async (row) => {
   const Swal = (await import('sweetalert2')).default
   await Swal.fire({ title: 'Session Log', html, width: 800, confirmButtonText: 'Close' })
 }
+
+// Truncate helper for table display
+const truncate = (v, n = 80) => {
+  if (v == null) return ''
+  const s = String(v)
+  return s.length > n ? s.slice(0, n - 1) + '…' : s
+}
 </script>
 
 <template>
@@ -135,6 +142,9 @@ const openView = async (row) => {
       <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading" @query-change="fetchAll">
         <template #cell-created_at="{ row }">
           <span>{{ row.created_at ? new Date(row.created_at).toLocaleString() : '-' }}</span>
+        </template>
+        <template #cell-route="{ row }">
+          <span :title="row.route">{{ truncate(row.route, 80) }}</span>
         </template>
         <template #cell-status="{ row }">
           <Badge :text="row.status" :tone="statusTone(row.status)" />
