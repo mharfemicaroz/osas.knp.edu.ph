@@ -196,6 +196,17 @@ const routes = [
     component: () => import("@/views/GrievancesPage.vue"),
   },
 
+  {
+    meta: {
+      title: "Session Logs",
+      requiresAuth: true,
+      roles: ["admin", "manager"],
+    },
+    path: "/session-logs",
+    name: "session-logs",
+    component: () => import("@/views/SessionLogsPage.vue"),
+  },
+
   // 404
   {
     path: "/:pathMatch(.*)*",

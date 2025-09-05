@@ -10,6 +10,7 @@ import {
   mdiFileDocument,
   mdiAccount,
   mdiBookOpenVariant,
+  mdiFileCog,
 } from "@mdi/js";
 
 /** Admin base menu (roles metadata) */
@@ -73,6 +74,12 @@ const ADMIN_MENU = [
     icon: mdiCommentAlert,
     label: "Grievances",
     roles: ["admin", "manager", "student_officer"],
+  },
+  {
+    to: "/session-logs",
+    icon: mdiFileCog,
+    label: "Session Logs",
+    roles: ["admin", "manager"],
   },
   {
     to: "/workflows",
