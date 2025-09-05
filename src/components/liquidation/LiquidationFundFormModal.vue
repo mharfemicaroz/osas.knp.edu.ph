@@ -197,44 +197,44 @@ const onSubmit = () => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
                         <label class="block mb-1">Contribution</label>
-                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2"
+                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2" placeholder="0.00"
                             v-model.number="form.sources_of_fund.contribution" :disabled="readOnly"
                             :class="errors.src_contribution ? 'border-red-500' : ''" />
                     </div>
                     <div>
                         <label class="block mb-1">Payment from Fines</label>
-                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2"
+                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2" placeholder="0.00"
                             v-model.number="form.sources_of_fund.payment_from_fines" :disabled="readOnly"
                             :class="errors.src_payment_from_fines ? 'border-red-500' : ''" />
                     </div>
                     <div>
                         <label class="block mb-1">Solicitations</label>
-                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2"
+                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2" placeholder="0.00"
                             v-model.number="form.sources_of_fund.solicitations" :disabled="readOnly"
                             :class="errors.src_solicitations ? 'border-red-500' : ''" />
                     </div>
                     <div>
                         <label class="block mb-1">Donations</label>
-                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2"
+                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2" placeholder="0.00"
                             v-model.number="form.sources_of_fund.donations" :disabled="readOnly"
                             :class="errors.src_donations ? 'border-red-500' : ''" />
                     </div>
                     <div>
                         <label class="block mb-1">Other Sources</label>
-                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2"
+                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2" placeholder="0.00"
                             v-model.number="form.sources_of_fund.other_sources" :disabled="readOnly"
                             :class="errors.src_other_sources ? 'border-red-500' : ''" />
                     </div>
                     <div>
                         <label class="block mb-1">Current Available Funds</label>
-                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2"
+                        <input type="number" step="0.01" min="0" class="w-full border rounded px-2.5 py-2" placeholder="0.00"
                             v-model.number="form.sources_of_fund.current_available_funds" :disabled="readOnly"
                             :class="errors.src_current_available_funds ? 'border-red-500' : ''" />
                     </div>
                     <div class="md:col-span-2">
                         <label class="block mb-1">Other Sources Note (optional)</label>
                         <textarea rows="2" class="w-full border rounded px-2.5 py-2"
-                            v-model="form.sources_of_fund.other_sources_note" :disabled="readOnly" />
+                            v-model="form.sources_of_fund.other_sources_note" :disabled="readOnly" placeholder="Describe other sources (optional)" />
                     </div>
                 </div>
 
@@ -274,25 +274,25 @@ const onSubmit = () => {
                         <tbody>
                             <tr v-for="(u, idx) in form.uses_of_fund" :key="idx" class="border-t">
                                 <td class="p-2"><input type="date" v-model="u.date" class="border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="YYYY-MM-DD" /></td>
                                 <td class="p-2">
                                     <input type="number" min="1" v-model.number="u.qty"
-                                        class="w-20 border rounded px-2 py-1" :disabled="readOnly"
+                                        class="w-20 border rounded px-2 py-1" :disabled="readOnly" placeholder="1"
                                         :class="errors[`use_${idx}_qty`] ? 'border-red-500' : ''" />
                                 </td>
                                 <td class="p-2"><input v-model="u.unit" class="w-20 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="e.g., pcs" /></td>
                                 <td class="p-2"><input v-model="u.particulars" class="w-52 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="Item/service details" /></td>
                                 <td class="p-2"><input v-model="u.sheet_no" class="w-24 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="Ref / Sheet No." /></td>
                                 <td class="p-2">
                                     <input type="number" step="0.01" min="0" v-model.number="u.amount"
-                                        class="w-28 border rounded px-2 py-1" :disabled="readOnly"
+                                        class="w-28 border rounded px-2 py-1" :disabled="readOnly" placeholder="0.00"
                                         :class="errors[`use_${idx}_amount`] ? 'border-red-500' : ''" />
                                 </td>
                                 <td class="p-2"><input v-model="u.in_charge" class="w-32 border rounded px-2 py-1"
-                                        :disabled="readOnly" /></td>
+                                        :disabled="readOnly" placeholder="Person responsible" /></td>
                                 <td class="p-2 text-right">
                                     <button class="px-2 py-1 bg-red-50 text-red-700 rounded" :disabled="readOnly"
                                         @click="removeUseRow(idx)">Remove</button>
@@ -319,7 +319,7 @@ const onSubmit = () => {
                 <div>
                     <label class="block mb-1">Remarks</label>
                     <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2.5 py-2"
-                        :disabled="readOnly"></textarea>
+                        :disabled="readOnly" placeholder="Optional remarks"></textarea>
                 </div>
             </div>
 

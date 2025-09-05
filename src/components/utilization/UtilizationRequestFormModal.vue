@@ -281,7 +281,7 @@ const onSubmit = () => {
 
 <template>
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-        <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg w-[95vw] md:w-[720px] max-h-[90vh] overflow-y-auto">
+        <div class="bg-white p-3 md:p-4 rounded-xl shadow-lg w-full sm:w-[720px] max-w-[95vw] h-[100vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto">
             <!-- Header -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
