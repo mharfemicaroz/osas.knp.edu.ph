@@ -6,6 +6,7 @@
         <BaseIcon :path="item.icon" :size="20" cls="mr-2 text-yellow-300" />
         <span class="relative inline-flex items-center">
             {{ item.label }}
+            <span v-if="isAdminOnly" class="ml-2 text-[10px] px-1 py-0.5 rounded bg-indigo-600 text-white">ADMIN</span>
             <span v-if="showBadge && badgeCount > 0"
                 class="ml-1 inline-flex items-center justify-center text-[10px] leading-none min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white align-super">
                 {{ badgeCount }}
@@ -19,6 +20,7 @@
         <BaseIcon :path="item.icon" :size="20" cls="mr-2" />
         <span class="relative inline-flex items-center">
             {{ item.label }}
+            <span v-if="isAdminOnly" class="ml-2 text-[10px] px-1 py-0.5 rounded bg-indigo-600 text-white">ADMIN</span>
             <span v-if="showBadge && badgeCount > 0"
                 class="ml-1 inline-flex items-center justify-center text-[10px] leading-none min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white align-super">
                 {{ badgeCount }}
@@ -84,6 +86,15 @@ const isAllowed = computed(() => {
     }
     return true;
 });
+
+// Mark items that are only for admin/manager roles
+const isAdminOnly = computed(() => {
+    const roles = Array.isArray(props.item?.roles) ? props.item.roles.map(r => String(r).toLowerCase()) : []
+    if (!roles.length) return false
+    const allowed = new Set(["admin", "manager"])
+    // admin-only if every role is admin/manager and nothing else
+    return roles.every(r => allowed.has(r))
+})
 
 /** Route resolution */
 const resolvedTo = computed(() => {
