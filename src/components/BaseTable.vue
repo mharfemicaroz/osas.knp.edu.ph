@@ -12,7 +12,7 @@
         </div>
 
         <div ref="tableContainer" class="table-container relative rounded-lg border border-gray-200 shadow-sm bg-white">
-            <table class="w-full border-collapse bg-white min-w-max">
+            <table class="w-full border-collapse bg-white min-w-full">
                 <thead class="bg-white text-gray-700 text-sm border-b">
                     <tr>
                         <!-- Checkbox column -->
@@ -21,7 +21,14 @@
                         </th>
 
                         <!-- Table columns -->
-                        <th v-for="col in columns" :key="col.key" class="px-4 py-2 text-left whitespace-nowrap">
+                        <th
+                            v-for="col in columns"
+                            :key="col.key"
+                            :class="[
+                                'px-4 py-2 text-left',
+                                (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                            ]"
+                        >
                             <!-- Dynamic header slot -->
                             <slot :name="`header-${col.key}`" :column="col"
                                 :sort="{ key: internalSortKey, order: internalSortOrder, toggle: () => toggleSort(col.key) }"
@@ -57,7 +64,7 @@
                         </th>
 
                         <!-- Action column (conditionally shown; kept for backward-compat) -->
-                        <th v-if="showAction" class="px-2 py-1 whitespace-nowrap text-right w-1"></th>
+                        <th v-if="showAction" class="px-2 py-1 text-right w-1 whitespace-nowrap"></th>
                     </tr>
                 </thead>
 
@@ -81,7 +88,13 @@
                         </td>
 
                         <!-- Data cells -->
-                        <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap"
+                        <td
+                            v-for="col in columns"
+                            :key="col.key"
+                            :class="[
+                                'px-4 py-2',
+                                (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                            ]"
                             :data-label="col.label">
                             <!-- Dynamic cell slot per column -->
                             <slot :name="`cell-${col.key}`" :row="item" :value="item[col.key]" :column="col">
@@ -107,7 +120,13 @@
                     <!-- Aggregate Totals Row -->
                     <tr v-if="hasAggregates" class="border-t text-sm font-semibold bg-gray-50">
                         <td v-if="checkable" class="p-2 w-10"></td>
-                        <td v-for="col in columns" :key="col.key" class="px-4 py-2 whitespace-nowrap"
+                        <td
+                            v-for="col in columns"
+                            :key="col.key"
+                            :class="[
+                                'px-4 py-2',
+                                (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                            ]"
                             :data-label="col.label">
                             <slot :name="`aggregate-${col.key}`" :value="aggregates[col.key]" :column="col">
                                 <span v-if="col.aggregate">{{ aggregates[col.key] }}</span>
@@ -364,13 +383,14 @@ const hasAggregates = computed(() => props.columns.some((col) => col.aggregate))
 
 <style scoped>
 .table-container {
-    overflow-x: auto;
-    white-space: nowrap;
-}
+    /* Ensure the container doesn't grow wider than its parent */
+    max-width: 100%;
+    width: 100%;
 
-th,
-td {
-    white-space: nowrap;
+    /* Allow horizontal scroll when needed */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .fade-enter-active,

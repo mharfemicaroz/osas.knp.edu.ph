@@ -150,16 +150,21 @@ const adLabel = (ad) => {
 }
 
 /* ---------- Facilities (strict select from FACILITY_OPTIONS) ---------- */
-const facilitySelect = ref('')
+// Allow multi-select from the list, then add in bulk
+const facilitySelect = ref([])
 const remainingFacilities = computed(() =>
     FACILITY_OPTIONS.filter((opt) => !(form.value.facilities || []).includes(opt))
 )
 const addFacility = () => {
-    const v = facilitySelect.value
-    if (!v || !FACILITY_OPTIONS.includes(v)) return
+    const selected = Array.isArray(facilitySelect.value) ? facilitySelect.value.slice() : []
+    if (!selected.length) return
     if (!Array.isArray(form.value.facilities)) form.value.facilities = []
-    if (!form.value.facilities.includes(v)) form.value.facilities.push(v)
-    facilitySelect.value = ''
+    selected.forEach((v) => {
+        if (FACILITY_OPTIONS.includes(v) && !form.value.facilities.includes(v)) {
+            form.value.facilities.push(v)
+        }
+    })
+    facilitySelect.value = []
 }
 const removeFacility = (i) => {
     form.value.facilities.splice(i, 1)
@@ -351,15 +356,19 @@ const onSubmit = () => {
             <div class="mt-2 text-sm">
                 <label class="block mb-0.5">Facilities <span class="text-red-500">*</span></label>
                 <div class="flex gap-1.5">
-                    <select v-model="facilitySelect" class="border rounded px-2 py-1.5 min-w-[200px]"
+                    <select v-model="facilitySelect" multiple size="6"
+                        class="border rounded px-2 py-1.5 min-w-[240px]"
                         :disabled="readOnly">
                         <option value="">Select facility…</option>
                         <option v-for="f in remainingFacilities" :key="f" :value="f">{{ f }}</option>
                     </select>
-                    <button class="px-2.5 py-1.5 bg-gray-200 rounded text-[11px]"
-                        :disabled="readOnly || !facilitySelect" @click="addFacility">
-                        Add
-                    </button>
+                    <div class="flex flex-col gap-1">
+                        <button class="px-2.5 py-1.5 bg-gray-200 rounded text-[11px]"
+                            :disabled="readOnly || !(facilitySelect && facilitySelect.length)" @click="addFacility">
+                            Add Selected
+                        </button>
+                        <span class="text-[10px] text-gray-500">Use Ctrl/Cmd or Shift to select multiple.</span>
+                    </div>
                 </div>
                 <p v-if="errors.facilities" class="text-red-600 text-[11px] mt-0.5">{{ errors.facilities }}</p>
 

@@ -7,7 +7,7 @@ import QRCode from "qrcode";
 /* ------------ ORG + Verify ------------- */
 const ORG_TITLE = "KOLEHIYO NG PANTUKAN";
 const ORG_SUBTITLE = "Juan A. Sarenas Campus, Kingking, Pantukan, Davao de Oro";
-const VERIFY_BASE = "https://osas.knp.edu.ph/verify-liquidation?id=";
+const VERIFY_BASE = "https://osas.knp.edu.ph/#/verify-liquidation?id=";
 
 /* ------------ Helpers ------------- */
 const fmtDate = (d) => (d ? dayjs(d).format("MMMM DD, YYYY") : "—");
