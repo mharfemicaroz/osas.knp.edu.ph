@@ -2,6 +2,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import userService from "../services/user/userService";
+import { useAuthStore } from "./auth";
 
 export const useUserStore = defineStore("user", () => {
   // --- STATE ---
@@ -176,15 +177,18 @@ export const useUserStore = defineStore("user", () => {
   const fetchUserClubs = async (userId, { force = false } = {}) => {
     error.value = null;
     try {
+      const authStore = useAuthStore();
+      const selfId = String(authStore.user?.id ?? "");
+      const isSelf = String(userId) === selfId;
       const key = String(userId);
       if (!force && Array.isArray(clubsByUser.value[key])) {
-        selectedUserClubs.value = clubsByUser.value[key];
+        if (isSelf) selectedUserClubs.value = clubsByUser.value[key];
         return clubsByUser.value[key];
       }
       isLoading.value = true;
       const clubs = await userService.getClubs(userId);
       clubsByUser.value[key] = clubs;
-      selectedUserClubs.value = clubs;
+      if (isSelf) selectedUserClubs.value = clubs;
       return clubs;
     } catch (err) {
       error.value =
