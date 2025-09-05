@@ -32,9 +32,12 @@ import { computed, ref, onMounted } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 import activityDesignService from "@/services/activity/activityDesignService";
+import annualPlanService from "@/services/plan/annualPlanService";
 import utilizationRequestService from "@/services/activity/utilizationRequestService";
 import liquidationFundService from "@/services/activity/liquidationFundService";
 import grievanceService from "@/services/grievance/grievanceService";
+import axiosInstance from "@/plugins/axiosConfig";
+import sessionLogService from "@/services/session/sessionLogService";
 import BaseIcon from "@/components/commons/BaseIcon.vue";
 
 defineOptions({ name: "NavbarItem" });
@@ -95,7 +98,7 @@ const showBadge = computed(() => {
     const t = targetPath.value;
     const role = baseRole.value;
     const allowedRole = role === 'admin' || role === 'manager';
-    const isTarget = t === "/workflows" || t === "/annual-plans" || t === "/activity-designs" || t === "/utilization-requests" || t === "/liquidation-funds" || t === "/grievances";
+    const isTarget = t === "/workflows" || t === "/annual-plans" || t === "/activity-designs" || t === "/utilization-requests" || t === "/liquidation-funds" || t === "/grievances" || t === "/session-logs";
     return allowedRole && isTarget;
 });
 const badgeCount = ref(0);
@@ -103,8 +106,14 @@ let lastReqId = 0;
 
 const totalFrom = (res) => {
     if (!res) return 0;
-    const t = Number(res.total ?? res.count ?? 0);
-    return Number.isFinite(t) ? t : 0;
+    const direct = res.total ?? res.count;
+    if (direct != null) {
+        const n = Number(direct);
+        if (Number.isFinite(n)) return n;
+    }
+    // Fallback: some endpoints may only return an array when limit is small
+    const arrLen = Array.isArray(res.data) ? res.data.length : 0;
+    return arrLen || 0;
 };
 
 const refreshBadgeCount = async () => {
@@ -112,7 +121,8 @@ const refreshBadgeCount = async () => {
         const reqId = ++lastReqId;
         const to = targetPath.value;
         if (to === "/workflows") {
-            const [ad, ur, lf, grvS, grvR] = await Promise.allSettled([
+            const [ap, ad, ur, lf, grvS, grvR] = await Promise.allSettled([
+                annualPlanService.list({ status: "pending", page: 1, limit: 1 }),
                 activityDesignService.list({ status: "pending", page: 1, limit: 1 }),
                 utilizationRequestService.list({ status: "pending", page: 1, limit: 1 }),
                 liquidationFundService.list({ status: "pending", page: 1, limit: 1 }),
@@ -120,12 +130,27 @@ const refreshBadgeCount = async () => {
                 grievanceService.list({ status: "in_review", page: 1, limit: 1 }),
             ]);
             if (reqId !== lastReqId) return; // stale responses ignored
+            const apTotal = ap.status === 'fulfilled' ? totalFrom(ap.value) : 0;
             const adTotal = ad.status === 'fulfilled' ? totalFrom(ad.value) : 0;
             const urTotal = ur.status === 'fulfilled' ? totalFrom(ur.value) : 0;
             const lfTotal = lf.status === 'fulfilled' ? totalFrom(lf.value) : 0;
-            const grvSTotal = grvS.status === 'fulfilled' ? totalFrom(grvS.value) : 0;
-            const grvRTotal = grvR.status === 'fulfilled' ? totalFrom(grvR.value) : 0;
-            badgeCount.value = adTotal + urTotal + lfTotal + grvSTotal + grvRTotal;
+            let grvSTotal = grvS.status === 'fulfilled' ? totalFrom(grvS.value) : 0;
+            let grvInReviewTotal = grvR.status === 'fulfilled' ? totalFrom(grvR.value) : 0;
+
+            // Fallback: directly query counts if service shape is unexpected
+            if ((grvSTotal + grvInReviewTotal) === 0) {
+                try {
+                    const [a, b] = await Promise.all([
+                        axiosInstance.get('/grievances', { params: { status: 'submitted', page: 1, limit: 1 } }),
+                        axiosInstance.get('/grievances', { params: { status: 'in_review', page: 1, limit: 1 } }),
+                    ]);
+                    grvSTotal = totalFrom(a.data);
+                    grvInReviewTotal = totalFrom(b.data);
+                } catch {}
+            }
+
+            // Count grievances under review as part of workflows
+            badgeCount.value = apTotal + adTotal + urTotal + lfTotal + grvSTotal + grvInReviewTotal;
         } else if (to === "/annual-plans") {
             await fetchAnnualPending();
         } else if (to === "/activity-designs") {
@@ -150,6 +175,10 @@ const refreshBadgeCount = async () => {
             const sTotal = subm.status === 'fulfilled' ? totalFrom(subm.value) : 0;
             const iTotal = inrev.status === 'fulfilled' ? totalFrom(inrev.value) : 0;
             badgeCount.value = sTotal + iTotal;
+        } else if (to === "/session-logs") {
+            const res = await sessionLogService.list({ page: 1, limit: 1 });
+            if (reqId !== lastReqId) return;
+            badgeCount.value = totalFrom(res);
         } else {
             badgeCount.value = 0;
         }
