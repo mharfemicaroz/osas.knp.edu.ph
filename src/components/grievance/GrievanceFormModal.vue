@@ -225,7 +225,7 @@ const removeAttachment = async (attIdOrIndex) => {
 
       <div class="flex justify-end gap-1.5 mt-4">
         <button class="px-3 py-1.5 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
-        <button v-if="!readOnly" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs" @click="onSubmit">
+        <button v-if="!readOnly" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs" v-pending-click="onSubmit">
           {{ mode === 'create' ? 'File Grievance' : 'Save Changes' }}
         </button>
       </div>

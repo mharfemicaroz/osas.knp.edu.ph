@@ -64,4 +64,45 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+// --- Global mutation de-duplication (prevent double submit) ---
+// Ensures only one in-flight POST/PUT/PATCH/DELETE per URL at a time.
+// Subsequent calls while a request is pending will reuse the same promise.
+const inflightByKey = new Map();
+
+function mutationKey(config) {
+  const method = String(config?.method || "get").toLowerCase();
+  // Only guard mutations
+  if (!["post", "put", "patch", "delete"].includes(method)) return null;
+  const base = config?.baseURL || axiosInstance.defaults.baseURL || "";
+  const url = config?.url || "";
+  // Keyed only by method + full URL (or path) so any double-click to same endpoint is deduped
+  try {
+    if (base) {
+      return `${method}|${new URL(url, base).toString()}`;
+    }
+    return `${method}|${url}`;
+  } catch {
+    // Fallback to concatenation if URL construction fails
+    return `${method}|${String(base)}${String(url)}`;
+  }
+}
+
+const _originalRequest = axiosInstance.request.bind(axiosInstance);
+
+axiosInstance.request = function guardedRequest(config) {
+  const key = mutationKey(config);
+  if (!key) {
+    return _originalRequest(config);
+  }
+  if (inflightByKey.has(key)) {
+    return inflightByKey.get(key);
+  }
+  const p = _originalRequest(config)
+    .finally(() => {
+      inflightByKey.delete(key);
+    });
+  inflightByKey.set(key, p);
+  return p;
+};
+
 export default axiosInstance;

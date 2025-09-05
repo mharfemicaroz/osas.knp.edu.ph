@@ -582,7 +582,7 @@ const openProfile = (row) => {
             <div class="flex justify-end gap-2 mt-5">
                 <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="modalVisible = false">Close</button>
                 <button v-if="modalMode !== 'view'" class="px-4 py-2 bg-blue-600 text-white rounded text-xs"
-                    @click="onSubmit">
+                    v-pending-click="onSubmit">
                     {{ modalMode === 'edit' ? 'Save Changes' : 'Create User' }}
                 </button>
             </div>

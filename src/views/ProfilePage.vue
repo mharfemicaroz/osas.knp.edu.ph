@@ -370,7 +370,7 @@ const openClub = (clubId) => {
                             <div class="mt-4 flex justify-end" v-if="isSelf">
                                 <button type="button"
                                     class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                                    :disabled="savingProfile" @click="saveProfile">
+                                    :disabled="savingProfile" v-pending-click="saveProfile">
                                     <svg style="width:18px;height:18px" viewBox="0 0 24 24">
                                         <path :d="mdiContentSave" />
                                     </svg>
@@ -484,7 +484,7 @@ const openClub = (clubId) => {
                             <div class="mt-4 flex justify-end">
                                 <button type="button"
                                     class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                                    :disabled="savingPassword" @click="changePassword">
+                                    :disabled="savingPassword" v-pending-click="changePassword">
                                     <svg style="width:18px;height:18px" viewBox="0 0 24 24">
                                         <path :d="mdiKeyVariant" />
                                     </svg>

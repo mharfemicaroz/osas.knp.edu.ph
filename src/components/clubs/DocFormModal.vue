@@ -144,9 +144,8 @@ const close = () => {
                         @click="close">
                         Cancel
                     </button>
-                    <button type="button" class="px-4 py-2 rounded-lg text-xs"
-                        :class="props.mode === 'edit' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-blue-600 text-white hover:bg-blue-700'"
-                        @click="onSubmit">
+                    <button type="button" class="px-4 py-2 rounded-lg text-xs" v-pending-click="onSubmit"
+                        :class="props.mode === 'edit' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-blue-600 text-white hover:bg-blue-700'">
                         {{ submitText }}
                     </button>
                 </div>

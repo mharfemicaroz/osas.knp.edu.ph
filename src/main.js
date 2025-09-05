@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
+import pendingClick from "./plugins/pendingClick";
 
 import axiosInstance from "./plugins/axiosConfig";
 
@@ -25,6 +26,7 @@ app.config.globalProperties.$Swal = Swal;
 app.use(router);
 app.use(LoadingPlugin, {});
 app.use(createPinia());
+app.directive("pending-click", pendingClick);
 
 app.mount("#app");
 

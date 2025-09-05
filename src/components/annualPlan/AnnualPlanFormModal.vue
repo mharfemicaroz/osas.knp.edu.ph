@@ -222,7 +222,7 @@ const onSubmit = () => {
             <!-- Footer -->
             <div class="flex justify-end gap-2 mt-5">
                 <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
-                <button v-if="!readOnly" class="px-4 py-2 bg-blue-600 text-white rounded text-xs" @click="onSubmit">
+                <button v-if="!readOnly" class="px-4 py-2 bg-blue-600 text-white rounded text-xs" v-pending-click="onSubmit">
                     {{ submitText }}
                 </button>
             </div>
