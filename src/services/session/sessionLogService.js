@@ -24,7 +24,7 @@ function buildListParams(queryParams = {}) {
     page,
     limit,
     sort,
-    order,
+    order: typeof order === 'string' ? String(order).toUpperCase() : order,
     q,
     request_id,
     user_id,
@@ -36,6 +36,10 @@ function buildListParams(queryParams = {}) {
     created_to,
     ...rest,
   };
+
+  // Normalize some fields
+  if (typeof params.method === 'string') params.method = params.method.toUpperCase();
+  if (typeof params.order === 'string') params.order = params.order.toUpperCase();
 
   Object.keys(params).forEach((k) => params[k] === undefined && delete params[k]);
   return params;
@@ -53,4 +57,3 @@ export default {
     return data;
   },
 };
-
