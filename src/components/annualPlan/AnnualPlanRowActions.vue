@@ -10,6 +10,7 @@ import {
 const props = defineProps({
     row: { type: Object, required: true },
     moderator: { type: Boolean, default: false },
+    busy: { type: Boolean, default: false },
 })
 const emit = defineEmits(['attachments', 'submit', 'approve', 'reject', 'edit', 'delete', 'view', 'cancel'])
 
@@ -37,26 +38,26 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 <template>
     <div class="flex items-center gap-1 md:gap-2">
         <IconifyButton :icon-path="mdiPaperclip" color="text-indigo-600" label="Attachments" tooltip="Attachments"
-            size="sm" @click="$emit('attachments', row)" />
+            size="sm" :disabled="busy" @click="$emit('attachments', row)" />
 
         <IconifyButton v-if="canView" :icon-path="mdiEye" color="text-gray-700" label="View" tooltip="View (read-only)"
-            size="sm" @click="$emit('view', row)" />
+            size="sm" :disabled="busy" @click="$emit('view', row)" />
 
         <IconifyButton v-if="canSubmit" :icon-path="mdiSend" color="text-blue-600" label="Submit" tooltip="Submit"
-            size="sm" @click="$emit('submit', row)" />
+            size="sm" :disabled="busy" @click="$emit('submit', row)" />
         <IconifyButton v-if="canEdit" :icon-path="mdiPencil" color="text-amber-600" label="Edit" tooltip="Edit"
-            size="sm" @click="$emit('edit', row)" />
+            size="sm" :disabled="busy" @click="$emit('edit', row)" />
 
         <IconifyButton v-if="canModerate" :icon-path="mdiCheckDecagram" color="text-emerald-600" label="Approve"
-            tooltip="Approve" size="sm" @click="$emit('approve', row)" />
+            tooltip="Approve" size="sm" :disabled="busy" @click="$emit('approve', row)" />
         <IconifyButton v-if="canModerate" :icon-path="mdiCloseOctagon" color="text-rose-600" label="Reject"
-            tooltip="Reject" size="sm" @click="$emit('reject', row)" />
+            tooltip="Reject" size="sm" :disabled="busy" @click="$emit('reject', row)" />
 
         <IconifyButton v-if="canCancel" :icon-path="mdiCancel" color="text-orange-600" label="Cancel"
-            tooltip="Cancel plan" size="sm" @click="$emit('cancel', row)" />
+            tooltip="Cancel plan" size="sm" :disabled="busy" @click="$emit('cancel', row)" />
 
         <IconifyButton v-if="canDelete" :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete" size="sm"
-            @click="$emit('delete', row)" />
+            :disabled="busy" @click="$emit('delete', row)" />
 
         <!-- Mobile menu -->
         <div class="relative md:hidden" ref="btnRef">

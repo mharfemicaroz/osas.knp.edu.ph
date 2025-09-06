@@ -16,6 +16,12 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
   const error = ref(null);
   const isLoaded = ref(false);
   const selected = ref(null);
+  const actioning = ref(new Set());
+  const isActing = (id) => actioning.value.has(id);
+  const withAction = async (id, fn) => {
+    if (id != null) actioning.value.add(id);
+    try { return await fn(); } finally { if (id != null) actioning.value.delete(id); }
+  };
 
   const upsertInList = (obj) => {
     if (!obj?.id) return;
@@ -92,7 +98,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await liquidationFundService.updateById(id, data);
+      const res = await withAction(id, () => liquidationFundService.updateById(id, data));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -112,7 +118,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      await liquidationFundService.delete(id);
+      await withAction(id, () => liquidationFundService.delete(id));
       items.value.data = items.value.data.filter((r) => r.id !== id);
       items.value.total = Math.max(0, items.value.total - 1);
       if (selected.value?.id === id) selected.value = null;
@@ -131,7 +137,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await liquidationFundService.submit(id);
+      const res = await withAction(id, () => liquidationFundService.submit(id));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -151,7 +157,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await liquidationFundService.approve(id, { remarks });
+      const res = await withAction(id, () => liquidationFundService.approve(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -171,7 +177,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await liquidationFundService.reject(id, { remarks });
+      const res = await withAction(id, () => liquidationFundService.reject(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -191,7 +197,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await liquidationFundService.cancel(id, { remarks });
+      const res = await withAction(id, () => liquidationFundService.cancel(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -285,6 +291,7 @@ export const useLiquidationFundStore = defineStore("liquidationFund", () => {
   return {
     items,
     selected,
+    isActing,
     isLoading,
     error,
     isLoaded,

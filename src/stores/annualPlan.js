@@ -16,6 +16,12 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
   const error = ref(null);
   const isLoaded = ref(false);
   const selected = ref(null);
+  const actioning = ref(new Set());
+  const isActing = (id) => actioning.value.has(id);
+  const withAction = async (id, fn) => {
+    if (id != null) actioning.value.add(id);
+    try { return await fn(); } finally { if (id != null) actioning.value.delete(id); }
+  };
 
   const upsertInList = (obj) => {
     if (!obj?.id) return;
@@ -90,7 +96,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await annualPlanService.updateById(id, data);
+      const res = await withAction(id, () => annualPlanService.updateById(id, data));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -110,7 +116,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      await annualPlanService.delete(id);
+      await withAction(id, () => annualPlanService.delete(id));
       items.value.data = items.value.data.filter((r) => r.id !== id);
       items.value.total = Math.max(0, items.value.total - 1);
       if (selected.value?.id === id) selected.value = null;
@@ -129,7 +135,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await annualPlanService.submit(id);
+      const res = await withAction(id, () => annualPlanService.submit(id));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -149,7 +155,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await annualPlanService.approve(id, { remarks });
+      const res = await withAction(id, () => annualPlanService.approve(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -169,7 +175,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await annualPlanService.reject(id, { remarks });
+      const res = await withAction(id, () => annualPlanService.reject(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -189,7 +195,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await annualPlanService.cancel(id, { remarks });
+      const res = await withAction(id, () => annualPlanService.cancel(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -262,6 +268,7 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
   return {
     items,
     selected,
+    isActing,
     isLoading,
     error,
     isLoaded,

@@ -18,8 +18,17 @@ const props = defineProps({
     tooltip: { type: String, default: '' },
     size: { type: String, default: 'sm' },
     disabled: { type: Boolean, default: false },
+    throttleMs: { type: Number, default: 1200 },
 })
 const emit = defineEmits(['click'])
+
+let locked = false
+const handleClick = () => {
+    if (props.disabled || locked) return
+    locked = true
+    emit('click')
+    setTimeout(() => { locked = false }, Math.max(0, Number(props.throttleMs) || 0))
+}
 
 const base =
     'inline-flex items-center gap-2 rounded-xl transition focus:outline-none focus:ring-2 focus:ring-offset-1'
@@ -41,7 +50,7 @@ const variants = {
         variant === 'ghost' ? variants.ghost : variants.solid,
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
         color,
-    ]" @click="$emit('click')">
+    ]" @click="handleClick">
         <svg :style="{ width: size === 'sm' ? '18px' : '20px', height: size === 'sm' ? '18px' : '20px' }"
             viewBox="0 0 24 24" aria-hidden="true">
             <path :d="iconPath" />

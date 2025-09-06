@@ -1,6 +1,7 @@
 // src/router/index.js
 import { createWebHashHistory, createRouter } from "vue-router";
 import { authGuard } from "./routeGuard";
+import { useNotificationStore } from '@/stores/notification'
 
 const routes = [
   { path: "/", name: "IndexPage", redirect: { name: "dashboard" } },
@@ -226,3 +227,4 @@ const router = createRouter({
 router.beforeEach(authGuard);
 
 export default router;
+

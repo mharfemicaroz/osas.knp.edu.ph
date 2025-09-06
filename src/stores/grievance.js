@@ -16,6 +16,12 @@ export const useGrievanceStore = defineStore("grievance", () => {
   const error = ref(null);
   const isLoaded = ref(false);
   const selected = ref(null);
+  const actioning = ref(new Set());
+  const isActing = (id) => actioning.value.has(id);
+  const withAction = async (id, fn) => {
+    if (id != null) actioning.value.add(id);
+    try { return await fn(); } finally { if (id != null) actioning.value.delete(id); }
+  };
 
   const upsertInList = (obj) => {
     if (!obj?.id) return;
@@ -92,7 +98,7 @@ export const useGrievanceStore = defineStore("grievance", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await grievanceService.updateById(id, data);
+      const res = await withAction(id, () => grievanceService.updateById(id, data));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -112,7 +118,7 @@ export const useGrievanceStore = defineStore("grievance", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      await grievanceService.delete(id);
+      await withAction(id, () => grievanceService.delete(id));
       items.value.data = items.value.data.filter((r) => r.id !== id);
       items.value.total = Math.max(0, items.value.total - 1);
       if (selected.value?.id === id) selected.value = null;
@@ -184,6 +190,7 @@ export const useGrievanceStore = defineStore("grievance", () => {
   return {
     items,
     selected,
+    isActing,
     isLoading,
     error,
     isLoaded,
@@ -197,4 +204,3 @@ export const useGrievanceStore = defineStore("grievance", () => {
     resetStore,
   };
 });
-

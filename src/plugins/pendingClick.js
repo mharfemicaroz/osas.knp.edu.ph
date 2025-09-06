@@ -3,6 +3,7 @@
 export default {
   beforeMount(el, binding) {
     el.__pending = false;
+    const minLockMs = Number(el.getAttribute('data-min-lock')) || 1000;
     el.__pendingClickHandler = async (evt) => {
       if (el.__pending) return;
       const fn = binding.value;
@@ -13,10 +14,11 @@ export default {
       el.disabled = true;
       el.classList.add('opacity-70', 'cursor-not-allowed');
       try {
+        const start = Date.now();
         const result = fn(evt);
-        if (result && typeof result.then === 'function') {
-          await result;
-        }
+        if (result && typeof result.then === 'function') await result;
+        const elapsed = Date.now() - start;
+        if (elapsed < minLockMs) await new Promise(r => setTimeout(r, minLockMs - elapsed));
       } finally {
         el.__pending = false;
         // restore only if we changed it
@@ -36,4 +38,3 @@ export default {
     delete el.__pending;
   },
 };
-

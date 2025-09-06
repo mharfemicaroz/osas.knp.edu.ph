@@ -16,6 +16,12 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
   const error = ref(null);
   const isLoaded = ref(false);
   const selected = ref(null);
+  const actioning = ref(new Set());
+  const isActing = (id) => actioning.value.has(id);
+  const withAction = async (id, fn) => {
+    if (id != null) actioning.value.add(id);
+    try { return await fn(); } finally { if (id != null) actioning.value.delete(id); }
+  };
 
   const upsertInList = (obj) => {
     if (!obj?.id) return;
@@ -90,7 +96,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.updateById(id, data);
+      const res = await withAction(id, () => activityDesignService.updateById(id, data));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -110,7 +116,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      await activityDesignService.delete(id);
+      await withAction(id, () => activityDesignService.delete(id));
       items.value.data = items.value.data.filter((r) => r.id !== id);
       items.value.total = Math.max(0, items.value.total - 1);
       if (selected.value?.id === id) selected.value = null;
@@ -129,7 +135,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.submit(id);
+      const res = await withAction(id, () => activityDesignService.submit(id));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -149,7 +155,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.approve(id, { remarks });
+      const res = await withAction(id, () => activityDesignService.approve(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -169,7 +175,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.reject(id, { remarks });
+      const res = await withAction(id, () => activityDesignService.reject(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -189,7 +195,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     error.value = null;
     try {
       isLoading.value = true;
-      const res = await activityDesignService.cancel(id, { remarks });
+      const res = await withAction(id, () => activityDesignService.cancel(id, { remarks }));
       upsertInList(res);
       if (selected.value?.id === id) selected.value = res;
       return res;
@@ -283,6 +289,7 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
   return {
     items,
     selected,
+    isActing,
     isLoading,
     error,
     isLoaded,

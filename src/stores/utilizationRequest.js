@@ -19,6 +19,12 @@ export const useUtilizationRequestStore = defineStore(
     const isLoaded = ref(false);
     const selected = ref(null);
     const availabilityProbe = ref(null);
+    const actioning = ref(new Set());
+    const isActing = (id) => actioning.value.has(id);
+    const withAction = async (id, fn) => {
+      if (id != null) actioning.value.add(id);
+      try { return await fn(); } finally { if (id != null) actioning.value.delete(id); }
+    };
 
     const upsertInList = (obj) => {
       if (!obj?.id) return;
@@ -93,7 +99,7 @@ export const useUtilizationRequestStore = defineStore(
       error.value = null;
       try {
         isLoading.value = true;
-        const res = await utilizationRequestService.updateById(id, data);
+        const res = await withAction(id, () => utilizationRequestService.updateById(id, data));
         upsertInList(res);
         if (selected.value?.id === id) selected.value = res;
         return res;
@@ -113,7 +119,7 @@ export const useUtilizationRequestStore = defineStore(
       error.value = null;
       try {
         isLoading.value = true;
-        await utilizationRequestService.delete(id);
+        await withAction(id, () => utilizationRequestService.delete(id));
         items.value.data = items.value.data.filter((r) => r.id !== id);
         items.value.total = Math.max(0, items.value.total - 1);
         if (selected.value?.id === id) selected.value = null;
@@ -132,7 +138,7 @@ export const useUtilizationRequestStore = defineStore(
       error.value = null;
       try {
         isLoading.value = true;
-        const res = await utilizationRequestService.submit(id);
+        const res = await withAction(id, () => utilizationRequestService.submit(id));
         upsertInList(res);
         if (selected.value?.id === id) selected.value = res;
         return res;
@@ -152,7 +158,7 @@ export const useUtilizationRequestStore = defineStore(
       error.value = null;
       try {
         isLoading.value = true;
-        const res = await utilizationRequestService.approve(id, { remarks });
+        const res = await withAction(id, () => utilizationRequestService.approve(id, { remarks }));
         upsertInList(res);
         if (selected.value?.id === id) selected.value = res;
         return res;
@@ -172,7 +178,7 @@ export const useUtilizationRequestStore = defineStore(
       error.value = null;
       try {
         isLoading.value = true;
-        const res = await utilizationRequestService.reject(id, { remarks });
+        const res = await withAction(id, () => utilizationRequestService.reject(id, { remarks }));
         upsertInList(res);
         if (selected.value?.id === id) selected.value = res;
         return res;
@@ -192,7 +198,7 @@ export const useUtilizationRequestStore = defineStore(
       error.value = null;
       try {
         isLoading.value = true;
-        const res = await utilizationRequestService.cancel(id, { remarks });
+        const res = await withAction(id, () => utilizationRequestService.cancel(id, { remarks }));
         upsertInList(res);
         if (selected.value?.id === id) selected.value = res;
         return res;
@@ -310,6 +316,7 @@ export const useUtilizationRequestStore = defineStore(
       items,
       selected,
       availabilityProbe,
+      isActing,
       isLoading,
       error,
       isLoaded,

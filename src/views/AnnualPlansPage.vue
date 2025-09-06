@@ -332,7 +332,7 @@ const openAttachments = async (row) => {
                     <Badge :text="value || '—'" :tone="statusTone(value)" />
                 </template>
                 <template #cell-actions="{ row }">
-                    <AnnualPlanRowActions :row="row"
+                    <AnnualPlanRowActions :row="row" :busy="store.isActing(row.id)"
                         :moderator="isAdminManager"
                         @attachments="openAttachments" @submit="submitItem" @approve="approveItem" @reject="rejectItem"
                         @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem" />
