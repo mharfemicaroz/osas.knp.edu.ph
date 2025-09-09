@@ -21,8 +21,11 @@
         <div v-if="notifOpen" class="fixed inset-0 z-30" @click="notifOpen = false"></div>
         <button
           class="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+          :class="shouldAttention ? 'bell-attn-container' : ''"
           @click="toggleNotifs" aria-label="Notifications">
-          <i class="mdi mdi-bell-outline text-xl"></i>
+          <!-- periodic ring pulse -->
+          <span v-if="shouldAttention" class="absolute inset-0 pointer-events-none bell-ring"></span>
+          <i class="mdi mdi-bell-outline text-xl" :class="shouldAttention ? 'bell-attn' : ''"></i>
           <span v-if="notifBadge > 0"
             class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[10px] leading-4 text-center">
             {{ Math.min(notifBadge, 99) }}
@@ -373,4 +376,49 @@ onBeforeUnmount(() => {
   window.removeEventListener('focus', refreshBadge)
   if (pollId) { window.clearInterval(pollId); pollId = null }
 })
+
+// Animate bell when there are unread notifications and panel is closed
+const shouldAttention = computed(() => (notifBadge.value > 0) && !notifOpen.value)
 </script>
+
+<style scoped>
+/* Periodic attention animation: quick swing + soft pulse every 6s */
+@keyframes bell-swing-cycle {
+  0% { transform: rotate(0deg) translateY(0); }
+  2% { transform: rotate(-12deg) translateY(-1px); }
+  4% { transform: rotate(12deg) translateY(-1px); }
+  6% { transform: rotate(-8deg) translateY(0); }
+  8% { transform: rotate(5deg) translateY(0); }
+  10% { transform: rotate(0deg) translateY(0); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+
+@keyframes bell-ring-pulse {
+  0% { transform: scale(1); opacity: 0; }
+  1% { transform: scale(1); opacity: 0.2; }
+  6% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.bell-attn-container:hover .bell-attn,
+.bell-attn-container:focus .bell-attn {
+  /* Stop animation on user interaction */
+  animation-play-state: paused;
+}
+
+.bell-attn {
+  transform-origin: 50% 0%;
+  animation: bell-swing-cycle 6s ease-in-out infinite both;
+}
+
+.bell-ring {
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 60%, rgba(255,255,255,0) 70%);
+  animation: bell-ring-pulse 6s ease-out infinite both;
+}
+
+/* Respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  .bell-attn, .bell-ring { animation: none !important; }
+}
+</style>
