@@ -40,6 +40,7 @@ const props = defineProps({
             activity_design_id: '',
             // filed_by_user_id is now implicit via auth
             file_by_user_name: '',
+            noted_by: '',
             facilities: [],
             equipment_items: [],
             utilization_details: '',
@@ -448,6 +449,11 @@ const onSubmit = () => {
                     <label class="block mb-0.5">Utilization Details (duration, purpose, notes)</label>
                     <textarea v-model="form.utilization_details" rows="3" class="w-full border rounded px-2 py-1.5"
                         :disabled="readOnly" placeholder="e.g., 2 hours practice; stage and sound system" />
+                </div>
+                <div>
+                    <label class="block mb-0.5">Adviser (optional)</label>
+                    <input v-model="form.noted_by" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
+                        placeholder="Adviser name (noted by)" />
                 </div>
                 <div v-if="isAdmin">
                     <label class="block mb-0.5">Filer Name Override (optional)</label>

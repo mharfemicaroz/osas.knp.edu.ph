@@ -557,6 +557,7 @@ async function buildLiquidationFormPdfDoc(lf) {
     (lf?.filed_by
       ? `${lf.filed_by.first_name || ""} ${lf.filed_by.last_name || ""}`.trim()
       : "");
+  const noted = String(lf?.noted_by || "").trim();
   const approver = lf?.approver
     ? `${lf.approver.first_name || ""} ${lf.approver.last_name || ""}`.trim()
     : "";
@@ -570,8 +571,8 @@ async function buildLiquidationFormPdfDoc(lf) {
       textColor: 20,
       fontStyle: "bold",
     },
-    head: [["PREPARED BY:", "NOTED BY:", "APPROVED BY:"]],
-    body: [[preparer || " ", "Albert P. Mapalo, LPT, MAEd", approver || " "]],
+    head: [["PREPARED BY:", "NOTED BY:", "RECOMMENDING APPROVAL:"]],
+    body: [[preparer || " ", noted || " ", approver || " "]],
     columnStyles: {
       0: { cellWidth: (pageW - marginX * 2) / 2 },
       1: { cellWidth: "auto" },
@@ -588,6 +589,21 @@ async function buildLiquidationFormPdfDoc(lf) {
         };
       }
     },
+    margin: { left: marginX, right: marginX },
+  });
+
+  // Additional approval line under signatures
+  cursorY = doc.lastAutoTable.finalY + 6;
+  autoTable(doc, {
+    startY: cursorY,
+    theme: "plain",
+    styles: { fontSize: 10, halign: "center" },
+    body: [[
+      {
+        content:
+          "Approved by: DR. MARY ANN R. ARAULA (Acting College President)",
+      },
+    ]],
     margin: { left: marginX, right: marginX },
   });
 

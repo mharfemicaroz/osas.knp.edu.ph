@@ -28,6 +28,7 @@ const props = defineProps({
             details_of_activity: '',
             budgetary_requirements: '',
             file_by_user_name: '',        // optional override
+            noted_by: '',                 // Adviser (optional)
             filed_by_user_id: '',         // hidden (from auth)
             club_id: '',
             status: 'draft',
@@ -541,6 +542,12 @@ const onSubmit = () => {
                 <label class="block mb-0.5">Filer Name Override (optional)</label>
                 <input v-model="form.file_by_user_name" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
                     placeholder="If provided, this name appears as the filer" />
+            </div>
+
+            <div class="mt-2 text-sm">
+                <label class="block mb-0.5">Adviser (optional)</label>
+                <input v-model="form.noted_by" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
+                    placeholder="Adviser name (noted by)" />
             </div>
 
             <div class="mt-2 text-sm">

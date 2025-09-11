@@ -18,6 +18,7 @@ const props = defineProps({
             date_filed: '',
             activity_design_id: '',
             file_by_user_name: '',
+            noted_by: '',
             sources_of_fund: {
                 contribution: 0,
                 payment_from_fines: 0,
@@ -308,15 +309,19 @@ const onSubmit = () => {
                 </div>
             </div>
 
-            <!-- Remarks -->
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div v-if="isAdmin">
+            <!-- Remarks / Adviser -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div class="md:col-span-1">
+                    <label class="block mb-1">Adviser (optional)</label>
+                    <input v-model="form.noted_by" class="w-full border rounded px-2.5 py-2"
+                        :disabled="readOnly" placeholder="Adviser name (noted by)" />
+                </div>
+                <div class="md:col-span-1" v-if="isAdmin">
                     <label class="block mb-1">Filer Name Override (optional)</label>
                     <input v-model="form.file_by_user_name" class="w-full border rounded px-2.5 py-2"
                         :disabled="readOnly" placeholder="If provided, this name appears as the filer" />
                 </div>
-
-                <div>
+                <div class="md:col-span-1 md:col-span-2">
                     <label class="block mb-1">Remarks</label>
                     <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2.5 py-2"
                         :disabled="readOnly" placeholder="Optional remarks"></textarea>
