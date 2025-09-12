@@ -530,6 +530,16 @@ async function buildLiquidationFormPdfDoc(lf) {
   cursorY = doc.lastAutoTable.finalY + 10;
 
   /* -------- SIGNATORIES -------- */
+  // If not enough space, move the entire signatories block to next page
+  {
+    const pageH = doc.internal.pageSize.getHeight();
+    const bottomMargin = 30;
+    const needed = 180; // heading + signatures grid (approx)
+    if (cursorY + needed > pageH - bottomMargin) {
+      doc.addPage();
+      cursorY = 36;
+    }
+  }
   autoTable(doc, {
     startY: cursorY,
     theme: "plain",
@@ -571,17 +581,19 @@ async function buildLiquidationFormPdfDoc(lf) {
       textColor: 20,
       fontStyle: "bold",
     },
+    showHead: 'firstPage',
+    rowPageBreak: 'avoid',
     head: [["PREPARED BY:", "NOTED BY:", "RECOMMENDING APPROVAL:"]],
     body: [
       [preparer || " ", noted || " ", approver || " "],
       [
         {
-          content: "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA",
+          content: "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA\nActing College President",
           colSpan: 3,
           styles: {
             halign: "center",
             fontStyle: "bold",
-            cellPadding: { top: 4, right: 10, bottom: 4, left: 10 },
+            cellPadding: { top: 14, right: 10, bottom: 16, left: 10 },
           },
         },
       ],
