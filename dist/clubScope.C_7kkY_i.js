@@ -1,0 +1,1 @@
+import{ac as l}from"./index.Dmn8qN4r.js";import{useAppContextStore as c}from"./appContext.HVyTrVxu.js";function b(){const e=c(),{isClub:o,activeClubId:t}=l(e);return{isClub:o,activeClubId:t,withClub:(i={})=>{const u={...i||{}};return o.value&&t.value&&(!("club_id"in u)||u.club_id==null||u.club_id==="")&&(u.club_id=t.value),u}}}export{b as u};
