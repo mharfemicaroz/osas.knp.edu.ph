@@ -89,7 +89,7 @@ async function drawHeader(doc) {
 // NEW: one-row, two-column block for STATUS + VERIFY (QR)
 async function drawStatusAndVerifyRow(doc, a, startY) {
   const pageW = doc.internal.pageSize.getWidth();
-  const marginX = 36;
+  const marginX = 15;
 
   const idOrRef = a?.id ?? a?.reference_code ?? "";
   const verifyUrl = `${VERIFY_BASE}${encodeURIComponent(String(idOrRef))}`;
@@ -119,8 +119,8 @@ async function drawStatusAndVerifyRow(doc, a, startY) {
     tableWidth: pageW - marginX * 2,
     body: [[{ content: "" }, { content: "" }]],
     columnStyles: {
-      0: { cellWidth: pageW - marginX * 2 - 260 }, // status/meta column
-      1: { cellWidth: 260 }, // verify (QR) column
+      0: { cellWidth: pageW - marginX * 2 - 280 }, // status/meta column
+      1: { cellWidth: 280 }, // verify (QR) column
     },
     didDrawCell: (data) => {
       if (data.section !== "body") return;
@@ -210,7 +210,7 @@ async function buildActivityDesignPdfDoc(a) {
     orientation: "portrait",
   });
   const pageW = doc.internal.pageSize.getWidth();
-  const marginX = 36;
+  const marginX = 15;
 
   // Header & right-hand cards (status + verify)
   let cursorY = await drawHeader(doc);

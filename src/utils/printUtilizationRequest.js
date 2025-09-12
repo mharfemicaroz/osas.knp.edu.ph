@@ -82,7 +82,7 @@ function availabilityColors(av) {
 async function drawHeader(doc) {
   const pageW = doc.internal.pageSize.getWidth();
   const headerH = 110;
-  const marginX = 36;
+  const marginX = 15;
 
   try {
     const banner = await toDataUrl(BANNER_URL);
@@ -121,7 +121,7 @@ async function drawHeader(doc) {
 /* ----- Status & Verify row (Status + Availability + QR) ----- */
 async function drawStatusAndVerifyRow(doc, u, startY) {
   const pageW = doc.internal.pageSize.getWidth();
-  const marginX = 36;
+  const marginX = 15;
 
   const idOrRef = u?.id ?? u?.reference_code ?? "";
   const verifyUrl = `${VERIFY_BASE}${encodeURIComponent(String(idOrRef))}`;
@@ -155,8 +155,8 @@ async function drawStatusAndVerifyRow(doc, u, startY) {
     tableWidth: pageW - marginX * 2,
     body: [[{ content: "" }, { content: "" }]],
     columnStyles: {
-      0: { cellWidth: pageW - marginX * 2 - 260 }, // left
-      1: { cellWidth: 260 }, // right
+      0: { cellWidth: pageW - marginX * 2 - 280 }, // left
+      1: { cellWidth: 280 }, // right
     },
     didDrawCell: (data) => {
       if (data.section !== "body") return;
