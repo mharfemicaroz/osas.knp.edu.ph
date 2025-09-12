@@ -55,6 +55,8 @@ const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === '
 
 const form = ref({ ...props.initial })
 const errors = ref({})
+const notedByPristine = ref(true)
+const lastAutoNoted = ref('')
 
 // keep the user's original values before any auto-fill from Annual Plan
 const baselineBeforeLink = ref(null)
@@ -87,6 +89,13 @@ const clubNameById = (id) => {
     const c = (clubStore.clubs?.data || []).find((x) => Number(x.id) === cid)
     return c?.name || ''
 }
+const clubAdviserById = (id) => {
+    const cid = Number(id)
+    const c = (clubStore.clubs?.data || []).find((x) => Number(x.id) === cid)
+    return c?.adviser || ''
+}
+const currentClubAdviser = computed(() => (clubAdviserById(form.value.club_id) || '').trim())
+const notedByLocked = computed(() => currentClubAdviser.value.length > 0)
 
 /* ---------- annual plan computed lists ---------- */
 // show all approved plans; club will auto-lock to the plan's club after selection
@@ -133,6 +142,16 @@ onMounted(async () => {
     }
 })
 
+// Track if noted_by is prefilled on edit to avoid overwriting
+watch(
+    () => props.initial,
+    (v) => {
+        notedByPristine.value = !(v && String(v.noted_by || '').trim())
+        lastAutoNoted.value = ''
+    },
+    { immediate: true }
+)
+
 /* ---------- sync props → form ---------- */
 watch(
     () => props.initial,
@@ -173,6 +192,20 @@ watch(
         const name = clubNameById(cid)
         if (name) form.value.office_department = name
     }
+)
+
+// Autofill noted_by from current club adviser if empty
+watch(
+    () => [form.value.club_id, clubStore.clubs?.data?.length],
+    () => {
+        const adv = clubAdviserById(form.value.club_id) || ''
+        // If untouched or currently shows the previous auto value, replace with new
+        if (notedByPristine.value || form.value.noted_by === lastAutoNoted.value) {
+            form.value.noted_by = adv
+            lastAutoNoted.value = adv
+        }
+    },
+    { immediate: true }
 )
 
 /* when plan changes: clear selected item, lock club to AP's club, capture baseline if first-time link */
@@ -297,6 +330,7 @@ const validate = () => {
     if (!form.value.objectives?.trim()) e.objectives = 'Required'
     if (!form.value.details_of_activity?.trim()) e.details_of_activity = 'Required'
     if (!form.value.budgetary_requirements?.trim()) e.budgetary_requirements = 'Required'
+    if (!form.value.noted_by?.trim()) e.noted_by = 'Required'
 
     errors.value = e
     return Object.keys(e).length === 0
@@ -545,9 +579,11 @@ const onSubmit = () => {
             </div>
 
             <div class="mt-2 text-sm">
-                <label class="block mb-0.5">Adviser (optional)</label>
-                <input v-model="form.noted_by" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
-                    placeholder="Adviser name (noted by)" />
+                <label class="block mb-0.5">Adviser (Noted by) <span class="text-red-500">*</span></label>
+                <input v-model="form.noted_by" class="w-full border rounded px-2 py-1.5" :disabled="readOnly || notedByLocked"
+                    :class="errors.noted_by ? 'border-red-500' : ''" placeholder="Adviser name (noted by)"
+                    @input="notedByPristine = false" />
+                <p v-if="errors.noted_by" class="text-red-600 text-[11px] mt-0.5">{{ errors.noted_by }}</p>
             </div>
 
             <div class="mt-2 text-sm">

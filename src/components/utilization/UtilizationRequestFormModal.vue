@@ -4,6 +4,7 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { useClubScope } from '@/utils/clubScope'
 import { useAuthStore } from '@/stores/auth'
 import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
+import { useClubStore } from '@/stores/club'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import Swal from 'sweetalert2'
 
@@ -64,6 +65,7 @@ const visible = computed({
 
 const auth = useAuthStore()
 const urStore = useUtilizationRequestStore()
+const clubStore = useClubStore()
 const adStore = useActivityDesignStore()
 const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
@@ -86,15 +88,44 @@ onMounted(async () => {
     const base = { page: 1, limit: 200, status: 'approved', officer: true }
     const params = isClub.value && activeClubId.value ? { ...base, club_id: activeClubId.value } : base
     await adStore.fetchAll(params, true)
+    if (!Array.isArray(clubStore.clubs?.data) || !clubStore.clubs.data.length) {
+        await clubStore.fetchAll({ page: 1, limit: 200 }, true)
+    }
 })
 
 const form = ref({ ...props.initial })
 const errors = ref({})
+const notedByPristine = ref(true)
+const lastAutoNoted = ref('')
 
 const selectedAD = computed(() => {
     const id = Number(form.value.activity_design_id || 0)
     return approvedAds.value.find((a) => Number(a.id) === id) || null
 })
+const selectedClubId = computed(() => {
+    const ad = selectedAD.value
+    return Number(ad?.club_id || ad?.club?.id || 0) || null
+})
+const clubAdviserById = (id) => {
+    const cid = Number(id)
+    const c = (clubStore.clubs?.data || []).find((x) => Number(x.id) === cid)
+    return c?.adviser || ''
+}
+const currentClubAdviser = computed(() => {
+    const cid = selectedClubId.value || activeClubId.value || null
+    return cid ? (clubAdviserById(cid) || '').trim() : ''
+})
+const notedByLocked = computed(() => currentClubAdviser.value.length > 0)
+
+const autoFillNotedBy = () => {
+    // Prefer the club from selected AD; fallback to active club in scope
+    const cid = selectedClubId.value || activeClubId.value || null
+    const adv = cid ? (clubAdviserById(cid) || '') : ''
+    if (notedByPristine.value || form.value.noted_by === lastAutoNoted.value) {
+        form.value.noted_by = adv
+        lastAutoNoted.value = adv
+    }
+}
 
 /* Keep form in sync with incoming props + sanitize arrays */
 watch(
@@ -114,6 +145,8 @@ watch(
         form.value.equipment_items = (form.value.equipment_items || []).filter((e) => !e?.name || EQUIPMENT_OPTIONS.includes(e.name))
 
         errors.value = {}
+        notedByPristine.value = !(v && String(v.noted_by || '').trim())
+        lastAutoNoted.value = ''
     },
     { immediate: true }
 )
@@ -129,7 +162,15 @@ watch(
             // if no AD (or missing DOI), clear
             form.value.start_date = ''
         }
+        autoFillNotedBy()
     },
+    { immediate: true }
+)
+
+// Also default from active club scope if present
+watch(
+    () => [activeClubId.value, clubStore.clubs?.data?.length],
+    () => { autoFillNotedBy() },
     { immediate: true }
 )
 
@@ -193,6 +234,7 @@ const validate = () => {
     const e = {}
 
     if (!form.value.activity_design_id) e.activity_design_id = 'Required'
+    if (!form.value.noted_by?.trim()) e.noted_by = 'Required'
 
     // start_date is locked to AD's DOI; ensure it exists
     if (!form.value.start_date) e.start_date = 'Start date is required (from Activity Design)'
@@ -451,9 +493,11 @@ const onSubmit = () => {
                         :disabled="readOnly" placeholder="e.g., 2 hours practice; stage and sound system" />
                 </div>
                 <div>
-                    <label class="block mb-0.5">Adviser (optional)</label>
-                    <input v-model="form.noted_by" class="w-full border rounded px-2 py-1.5" :disabled="readOnly"
-                        placeholder="Adviser name (noted by)" />
+                    <label class="block mb-0.5">Adviser (Noted by) <span class="text-red-500">*</span></label>
+                    <input v-model="form.noted_by" class="w-full border rounded px-2 py-1.5" :disabled="readOnly || notedByLocked"
+                        :class="errors.noted_by ? 'border-red-500' : ''" placeholder="Adviser name (noted by)"
+                        @input="notedByPristine = false" />
+                    <p v-if="errors.noted_by" class="text-red-600 text-[11px] mt-0.5">{{ errors.noted_by }}</p>
                 </div>
                 <div v-if="isAdmin">
                     <label class="block mb-0.5">Filer Name Override (optional)</label>

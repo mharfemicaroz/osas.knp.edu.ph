@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLiquidationFundStore } from '@/stores/liquidationFund'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useClubScope } from '@/utils/clubScope'
+import { useClubStore } from '@/stores/club'
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -44,6 +45,7 @@ const visible = computed({
 const auth = useAuthStore()
 const lfStore = useLiquidationFundStore()
 const adStore = useActivityDesignStore()
+const clubStore = useClubStore()
 const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
 const { isClub, activeClubId } = useClubScope()
@@ -62,10 +64,15 @@ onMounted(async () => {
     const base = { page: 1, limit: 200, status: 'approved' }
     const params = isClub.value && activeClubId.value ? { ...base, club_id: activeClubId.value } : base
     await adStore.fetchAll(params, true)
+    if (!Array.isArray(clubStore.clubs?.data) || !clubStore.clubs.data.length) {
+        await clubStore.fetchAll({ page: 1, limit: 200 }, true)
+    }
 })
 
 const form = ref(structuredClone(props.initial))
 const errors = ref({})
+const notedByPristine = ref(true)
+const lastAutoNoted = ref('')
 
 watch(
     () => props.initial,
@@ -84,6 +91,8 @@ watch(
             uses_of_fund: Array.isArray(uses) ? uses : [],
         }
         errors.value = {}
+        notedByPristine.value = !(v && String(v.noted_by || '').trim())
+        lastAutoNoted.value = ''
     },
     { immediate: true }
 )
@@ -102,6 +111,51 @@ const adLabel = (ad) => {
     const doi = ad?.date_of_implementation ? ` • ${ad.date_of_implementation}` : ''
     return `${name}${ref}${doi}`
 }
+
+const selectedAD = computed(() => {
+    const id = Number(form.value.activity_design_id || 0)
+    return approvedAds.value.find((a) => Number(a.id) === id) || null
+})
+const selectedClubId = computed(() => {
+    const ad = selectedAD.value
+    return Number(ad?.club_id || ad?.club?.id || 0) || null
+})
+const clubAdviserById = (id) => {
+    const cid = Number(id)
+    const c = (clubStore.clubs?.data || []).find((x) => Number(x.id) === cid)
+    return c?.adviser || ''
+}
+const currentClubAdviser = computed(() => {
+    const cid = selectedClubId.value || activeClubId.value || null
+    return cid ? (clubAdviserById(cid) || '').trim() : ''
+})
+const notedByLocked = computed(() => currentClubAdviser.value.length > 0)
+
+// Autofill noted_by when AD or clubs list changes
+watch(
+    () => [form.value.activity_design_id, clubStore.clubs?.data?.length],
+    () => {
+        const adv = clubAdviserById(selectedClubId.value) || ''
+        if (notedByPristine.value || form.value.noted_by === lastAutoNoted.value) {
+            form.value.noted_by = adv
+            lastAutoNoted.value = adv
+        }
+    },
+    { immediate: true }
+)
+
+// Also default from active club scope if present
+watch(
+    () => [activeClubId.value, clubStore.clubs?.data?.length],
+    () => {
+        const adv = clubAdviserById(activeClubId.value) || ''
+        if (notedByPristine.value || form.value.noted_by === lastAutoNoted.value) {
+            form.value.noted_by = adv
+            lastAutoNoted.value = adv
+        }
+    },
+    { immediate: true }
+)
 
 /* Client totals preview */
 const num = (v) => (Number.isFinite(+v) ? +v : 0)
@@ -129,6 +183,7 @@ const validate = () => {
     if (readOnly.value) return false
     const e = {}
     if (!form.value.activity_design_id) e.activity_design_id = 'Required'
+    if (!form.value.noted_by?.trim()) e.noted_by = 'Required'
     // basic sanity on numeric fields (non-negative)
     const s = form.value.sources_of_fund || {}
         ;['contribution', 'payment_from_fines', 'solicitations', 'donations', 'other_sources', 'current_available_funds'].forEach(k => {
@@ -312,9 +367,11 @@ const onSubmit = () => {
             <!-- Remarks / Adviser -->
             <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div class="md:col-span-1">
-                    <label class="block mb-1">Adviser (optional)</label>
+                    <label class="block mb-1">Adviser (Noted by) <span class="text-red-500">*</span></label>
                     <input v-model="form.noted_by" class="w-full border rounded px-2.5 py-2"
-                        :disabled="readOnly" placeholder="Adviser name (noted by)" />
+                        :class="errors.noted_by ? 'border-red-500' : ''" :disabled="readOnly || notedByLocked" placeholder="Adviser name (noted by)"
+                        @input="notedByPristine = false" />
+                    <p v-if="errors.noted_by" class="text-red-600 text-[11px] mt-1">{{ errors.noted_by }}</p>
                 </div>
                 <div class="md:col-span-1" v-if="isAdmin">
                     <label class="block mb-1">Filer Name Override (optional)</label>

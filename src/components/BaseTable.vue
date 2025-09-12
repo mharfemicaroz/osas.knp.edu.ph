@@ -21,14 +21,10 @@
                         </th>
 
                         <!-- Table columns -->
-                        <th
-                            v-for="col in columns"
-                            :key="col.key"
-                            :class="[
-                                'px-4 py-2 text-left',
-                                (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
-                            ]"
-                        >
+                        <th v-for="col in columns" :key="col.key" :class="[
+                            'px-4 py-2 text-left',
+                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                        ]">
                             <!-- Dynamic header slot -->
                             <slot :name="`header-${col.key}`" :column="col"
                                 :sort="{ key: internalSortKey, order: internalSortOrder, toggle: () => toggleSort(col.key) }"
@@ -88,20 +84,69 @@
                         </td>
 
                         <!-- Data cells -->
-                        <td
-                            v-for="col in columns"
-                            :key="col.key"
-                            :class="[
-                                'px-4 py-2',
-                                (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
-                            ]"
-                            :data-label="col.label">
+                        <td v-for="col in columns" :key="col.key" :class="[
+                            'px-4 py-2 align-top',
+                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                        ]" :data-label="col.label">
                             <!-- Dynamic cell slot per column -->
                             <slot :name="`cell-${col.key}`" :row="item" :value="item[col.key]" :column="col">
-                                <span v-if="col.formatter">
-                                    {{ col.formatter(item[col.key], item) }}
-                                </span>
-                                <span v-else>{{ item[col.key] ?? '-' }}</span>
+                                <template v-if="col.key === 'actions' || col.isAction">
+                                    <div class="relative flex items-center justify-end gap-1 select-none" @click.stop>
+                                        <template v-if="Array.isArray(col.actions) && col.actions.length">
+                                            <template v-if="(col.actions.filter(a => isVisible(a, item))).length">
+                                                <!-- Primary action (desktop): first with primary=true else first visible -->
+                                                <template
+                                                    v-for="(act, idx) in col.actions.filter(a => isVisible(a, item))"
+                                                    :key="'p-'+idx">
+                                                    <template
+                                                        v-if="(act.primary && idx === col.actions.findIndex(a => isVisible(a, item) && a.primary)) || (!col.actions.some(a => isVisible(a, item) && a.primary) && idx === 0)">
+                                                        <BaseButton class="hidden sm:inline-flex"
+                                                            :icon="act.icon || mdiPencil"
+                                                            :label="act.showLabel ? act.label : ''" small
+                                                            :title="act.tooltip || act.label"
+                                                            :disabled="isDisabled(act, item)"
+                                                            @click="handleAction(act, item)" />
+                                                    </template>
+                                                </template>
+                                                <!-- Kebab menu (always) -->
+                                                <BaseButton :icon="mdiDotsVertical" small title="More actions"
+                                                    @click.stop="(e) => toggleMenu(item, col, e)" />
+                                                <teleport to="body">
+                                                    <div v-if="isMenuOpen(item, col)" :style="menuStyle"
+                                                        class="fixed z-[9999] w-44 rounded-md border bg-white shadow-lg"
+                                                        @click.stop>
+                                                        <ul class="py-1 text-sm">
+                                                            <li v-for="(act, i2) in col.actions.filter(a => isVisible(a, item))"
+                                                                :key="'m-' + i2">
+                                                                <button
+                                                                    class="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
+                                                                    :class="[toneClass(act), isDisabled(act, item) ? 'opacity-50 cursor-not-allowed' : '']"
+                                                                    :disabled="isDisabled(act, item)"
+                                                                    @click="!isDisabled(act, item) && handleAction(act, item)">
+                                                                    <svg v-if="act.icon" class="w-4 h-4"
+                                                                        viewBox="0 0 24 24">
+                                                                        <path :d="act.icon" />
+                                                                    </svg>
+                                                                    <span class="truncate">{{ act.label }}</span>
+                                                                </button>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </teleport>
+                                            </template>
+                                        </template>
+                                        <template v-else>
+                                            <!-- Fallback: simple edit button if no actions configured -->
+                                            <BaseButton :icon="mdiPencil" small title="Edit" @click="editRow(item)" />
+                                        </template>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <span v-if="col.formatter">
+                                        {{ col.formatter(item[col.key], item) }}
+                                    </span>
+                                    <span v-else>{{ item[col.key] ?? '-' }}</span>
+                                </template>
                             </slot>
                         </td>
 
@@ -120,14 +165,10 @@
                     <!-- Aggregate Totals Row -->
                     <tr v-if="hasAggregates" class="border-t text-sm font-semibold bg-gray-50">
                         <td v-if="checkable" class="p-2 w-10"></td>
-                        <td
-                            v-for="col in columns"
-                            :key="col.key"
-                            :class="[
-                                'px-4 py-2',
-                                (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
-                            ]"
-                            :data-label="col.label">
+                        <td v-for="col in columns" :key="col.key" :class="[
+                            'px-4 py-2',
+                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                        ]" :data-label="col.label">
                             <slot :name="`aggregate-${col.key}`" :value="aggregates[col.key]" :column="col">
                                 <span v-if="col.aggregate">{{ aggregates[col.key] }}</span>
                             </slot>
@@ -174,7 +215,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount, defineProps, defineEmits } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, defineProps, defineEmits } from 'vue'
 import { useLoading } from 'vue-loading-overlay'
 import 'vue-loading-overlay/dist/css/index.css'
 
@@ -188,7 +229,8 @@ import {
     mdiChevronDown,
     mdiMagnify,
     mdiChevronLeft,
-    mdiChevronRight
+    mdiChevronRight,
+    mdiDotsVertical
 } from '@mdi/js'
 
 /* Props */
@@ -255,6 +297,8 @@ const internalSortOrder = ref('desc')
 const internalFilters = ref({})
 const showFilters = ref({})
 const selectedRows = ref(new Set())
+const openMenuId = ref(null) // `${rowKey}:${colKey}` when an action menu is open
+const menuStyle = ref({ top: '0px', left: '0px', minWidth: '176px' })
 
 watch(() => props.data.currentPage, (v) => (internalPage.value = v || 1))
 watch(() => props.data.pageSize, (v) => (internalPageSize.value = v || 10))
@@ -363,6 +407,82 @@ const toggleSelectRow = (checked, row) => {
 
 const editRow = (item) => emit('edit', item)
 
+/* -------- Row actions (headless popover) -------- */
+const actionId = (row, col) => `${row.id ?? row._key ?? JSON.stringify(row)}:${col?.key ?? 'actions'}`
+const isMenuOpen = (row, col) => openMenuId.value === actionId(row, col)
+const toggleMenu = (row, col, ev) => {
+    const id = actionId(row, col)
+    if (openMenuId.value === id) {
+        openMenuId.value = null
+        return
+    }
+    try {
+        const el = ev?.currentTarget || ev?.target
+        if (el && typeof el.getBoundingClientRect === 'function') {
+            const rect = el.getBoundingClientRect()
+            const width = 176
+            const gap = 6
+            const vw = window.innerWidth || document.documentElement.clientWidth
+            const vh = window.innerHeight || document.documentElement.clientHeight
+            let left = Math.min(vw - width - 8, Math.max(8, rect.right - width))
+            let top = rect.bottom + gap
+            // If too close to bottom, flip above
+            if (top + 240 > vh && rect.top > 240) {
+                top = Math.max(8, rect.top - gap - 240)
+            }
+            menuStyle.value = { position: 'fixed', top: `${top}px`, left: `${left}px`, minWidth: `${width}px` }
+        }
+    } catch { }
+    openMenuId.value = id
+}
+const closeMenu = () => { openMenuId.value = null }
+
+const isVisible = (act, row) => {
+    if (typeof act?.visible === 'function') return !!act.visible(row)
+    if (typeof act?.visible === 'boolean') return act.visible
+    return true
+}
+const isDisabled = (act, row) => {
+    if (typeof act?.disabled === 'function') return !!act.disabled(row)
+    if (typeof act?.disabled === 'boolean') return act.disabled
+    return false
+}
+const toneClass = (act) => {
+    const t = String(act?.tone || '').toLowerCase()
+    if (t === 'danger') return 'text-red-600 hover:bg-red-50'
+    if (t === 'warning') return 'text-amber-700 hover:bg-amber-50'
+    if (t === 'success') return 'text-emerald-700 hover:bg-emerald-50'
+    return ''
+}
+const handleAction = async (act, row) => {
+    if (!act) return
+    if (act.confirm) {
+        const ok = window.confirm(typeof act.confirm === 'string' ? act.confirm : 'Are you sure?')
+        if (!ok) return
+    }
+    if (typeof act.onClick === 'function') act.onClick(row)
+    else if (typeof act.emit === 'string') emit(act.emit, row)
+    closeMenu()
+}
+
+let _clickHandler = null
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        _clickHandler = () => { closeMenu() }
+        window.addEventListener('click', _clickHandler)
+        window.addEventListener('resize', _clickHandler)
+        window.addEventListener('scroll', _clickHandler, true)
+    }
+})
+onBeforeUnmount(() => {
+    if (_clickHandler && typeof window !== 'undefined') {
+        window.removeEventListener('click', _clickHandler)
+        window.removeEventListener('resize', _clickHandler)
+        window.removeEventListener('scroll', _clickHandler, true)
+        _clickHandler = null
+    }
+})
+
 /* Aggregation */
 const aggregates = computed(() => {
     const agg = {}
@@ -421,7 +541,7 @@ const hasAggregates = computed(() => props.columns.some((col) => col.aggregate))
         margin-bottom: 1rem;
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
-        overflow: hidden;
+        overflow: visible;
     }
 
     td {

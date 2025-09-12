@@ -12,6 +12,7 @@ const props = defineProps({
             name: '',
             code: '',
             category: '',
+            adviser: '',
             description: '',
             is_active: true,
             established_at: '',
@@ -62,6 +63,7 @@ const validate = () => {
     const errs = {}
     if (!form.value.name?.trim()) errs.name = 'Name is required'
     if (!form.value.code?.trim()) errs.code = 'Code is required'
+    if (!form.value.adviser?.trim()) errs.adviser = 'Adviser is required'
     errors.value = { ...errors.value, ...errs }
     return Object.keys(errs).length === 0
 }
@@ -170,6 +172,12 @@ const onSubmit = () => {
                         <option value="Leadership">Leadership</option>
                         <option value="Others">Others</option>
                     </select>
+                </div>
+                <div>
+                    <label class="block mb-1">Adviser <span class="text-red-500">*</span></label>
+                    <input v-model="form.adviser" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring"
+                        placeholder="Adviser full name" :class="errors.adviser ? 'border-red-500' : ''" />
+                    <p v-if="errors.adviser" class="text-red-600 text-xs mt-1">{{ errors.adviser }}</p>
                 </div>
                 <div>
                     <label class="block mb-1">Active?</label>
