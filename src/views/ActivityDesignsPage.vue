@@ -19,6 +19,7 @@ import ActivityRowActions from '@/components/activity/ActivityRowActions.vue'
 import ActivityAttachmentsModal from '@/components/activity/ActivityAttachmentsModal.vue'
 
 import { printActivityDesignPdf, buildActivityDesignPdfDoc } from '@/utils/printActivityDesign'
+import StatusTrailModal from '@/components/commons/StatusTrailModal.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useActivityDesignStore } from '@/stores/activityDesign'
@@ -40,6 +41,22 @@ const authStore = useAuthStore()
 const clubStore = useClubStore()
 const userStore = useUserStore()
 const { isClub, activeClubId, withClub } = useClubScope()
+
+const displayName = computed(() => {
+    const ln = authStore.user?.last_name || ''
+    const fi = (authStore.user?.first_name || '').slice(0,1)
+    return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}`
+})
+const parseRemarks = (v) => {
+    try {
+        const arr = Array.isArray(v) ? v : (JSON.parse(v || '[]') || [])
+        return (arr || []).map((it) => {
+            if (!it || typeof it !== 'object') return it
+            if (!Array.isArray(it.read_by)) it.read_by = (it.user_id != null ? [it.user_id] : [])
+            return it
+        })
+    } catch { return [] }
+}
 
 /* --- date range pickers (2-in-1) --- */
 const dpRangeCommon = {
@@ -313,6 +330,9 @@ const submitItem = async (row) => {
     if (!res.isConfirmed) return
 
     try {
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} submitted activity design.`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.updateById(row.id, { remarks: JSON.stringify(arr) })
         await store.submit(row.id)
         await fetchAll({}, true)
         await Swal.fire('Submitted', 'Activity is now pending approval.', 'success')
@@ -337,7 +357,9 @@ const approveItem = async (row) => {
 
     const remarks = res.value || ''
     try {
-        await store.approve(row.id, remarks)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} approved activity design.${remarks ? ' - ' + remarks : ''}`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.approve(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Approved', 'Activity has been approved.', 'success')
     } catch {
@@ -417,7 +439,9 @@ const rejectItem = async (row) => {
 
     const remarks = res.value
     try {
-        await store.reject(row.id, remarks)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} rejected activity design - ${remarks}.`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.reject(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Rejected', 'Activity has been rejected.', 'success')
     } catch {
@@ -443,7 +467,9 @@ const cancelItem = async (row) => {
 
     const remarks = res.value
     try {
-        await store.cancel(row.id, remarks)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} cancelled activity design - ${remarks}.`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.cancel(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Cancelled', 'Activity has been cancelled.', 'success')
     } catch {
@@ -475,6 +501,41 @@ const openAttachments = async (row) => {
     await store.fetchById(row.id)
     attachRow.value = store.selected || row
     attachVisible.value = true
+}
+
+/* Remarks modal */
+const remarksVisible = ref(false)
+const remarksRow = ref(null)
+const openRemarks = async (row) => {
+    try {
+        await store.fetchById(row.id)
+        remarksRow.value = store.selected || row
+    } catch {
+        remarksRow.value = row
+    }
+    remarksVisible.value = true
+}
+const addRemarkToRow = async (entry) => {
+    if (!remarksRow.value) return
+    const arr = parseRemarks(remarksRow.value.remarks)
+    arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: entry?.message || '', datetime: entry?.datetime || new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+    // Optimistic update for modal
+    try { remarksRow.value.remarks = JSON.stringify(arr) } catch {}
+    try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(arr) }); await fetchAll({}, true) } catch {}
+}
+const markAllReadForRow = async () => {
+    if (!remarksRow.value) return
+    const uid = authStore.user?.id || null
+    const arr = parseRemarks(remarksRow.value.remarks)
+    const next = arr.map(x => {
+        if (!x || x.user_id === uid) return x
+        const read_by = Array.isArray(x.read_by) ? x.read_by.slice() : []
+        if (!read_by.includes(uid)) read_by.push(uid)
+        return { ...x, read_by }
+    })
+    // Optimistic update for modal
+    try { remarksRow.value.remarks = JSON.stringify(next) } catch {}
+    try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(next) }); await fetchAll({}, true) } catch {}
 }
 
 /* filters */
@@ -644,13 +705,13 @@ const resetFilters = async () => {
                 <template #cell-actions="{ row }">
                     <ActivityRowActions
                         v-if="['admin', 'manager'].includes(String(authStore.user?.role || '').toLowerCase())"
-                        :row="row" :moderator="true" @attachments="openAttachments" @submit="submitItem"
-                        @approve="approveItem" @reject="rejectItem" @edit="openEdit" @delete="confirmDelete"
+                        :row="row" :moderator="true" :current-user-id="authStore.user?.id" @attachments="openAttachments" @submit="submitItem"
+                        @approve="approveItem" @reject="rejectItem" @edit="openEdit" @delete="confirmDelete" @remarks="openRemarks"
                         @view="openView(row)" @cancel="cancelItem" @print="printItem" @email="openEmail" />
 
-                    <ActivityRowActions v-else :row="row" :moderator="false" @attachments="openAttachments"
+                    <ActivityRowActions v-else :row="row" :moderator="false" :current-user-id="authStore.user?.id" @attachments="openAttachments"
                         @submit="submitItem" @edit="openEdit" @view="openView(row)" @print="printItem"
-                        @email="openEmail" />
+                        @email="openEmail" @remarks="openRemarks" />
                 </template>
             </BaseTable>
         </SectionMain>
@@ -665,6 +726,9 @@ const resetFilters = async () => {
     <ActivityDesignFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}" @submit="onEditSubmit" />
 
     <ActivityAttachmentsModal v-model="attachVisible" :row="attachRow" />
+
+    <StatusTrailModal v-model="remarksVisible" :title="'Remarks • ' + (remarksRow?.reference_code || remarksRow?.name_of_activity || 'Item')" :items="parseRemarks(remarksRow?.remarks)"
+      :can-add="true" @add="addRemarkToRow" @markAllRead="markAllReadForRow" />
 
     <!-- Email Modal -->
     <div v-if="emailVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">

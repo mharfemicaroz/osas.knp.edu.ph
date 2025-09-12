@@ -13,11 +13,13 @@ import {
   mdiCancel,
   mdiPrinter,
   mdiEmailOutline,
+  mdiMessageTextOutline,
 } from '@mdi/js'
 
 const props = defineProps({
   row: { type: Object, required: true },
   moderator: { type: Boolean, default: false },
+  currentUserId: { type: [String, Number], default: null },
 })
 
 const emit = defineEmits([
@@ -31,6 +33,7 @@ const emit = defineEmits([
   'cancel',
   'print',
   'email',
+  'remarks',
 ])
 
 const statusSafe = computed(() => String(props.row?.status || '').toLowerCase())
@@ -38,7 +41,7 @@ const canSubmit = computed(() => statusSafe.value === 'draft')
 const canEdit = computed(() => statusSafe.value === 'draft')
 const canView = computed(() => statusSafe.value !== 'draft')
 const canModerate = computed(() => props.moderator && statusSafe.value === 'pending')
-const canCancel = computed(() => props.moderator && statusSafe.value === 'approved')
+const canCancel = computed(() => props.moderator && (statusSafe.value === 'approved' || statusSafe.value === 'pending'))
 const canPrint = computed(() => statusSafe.value === 'approved')
 // Email allowed only for admin/manager (moderator) and when approved
 const canEmail = computed(() => props.moderator && statusSafe.value === 'approved')
@@ -54,6 +57,25 @@ const onDocumentClick = (e) => {
 }
 onMounted(() => document.addEventListener('click', onDocumentClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+
+// Remarks helpers for unread badge
+const parseRemarks = (r) => {
+  if (!r) return []
+  if (Array.isArray(r)) return r
+  try { return JSON.parse(r || '[]') || [] } catch { return [] }
+}
+const unreadCount = computed(() => {
+  const uid = props.currentUserId == null ? null : Number(props.currentUserId)
+  const items = parseRemarks(props.row?.remarks) || []
+  return items.filter((x) => {
+    if (!x) return false
+    if (x.is_read === true) return false // legacy global read
+    const authorId = x.user_id == null ? null : Number(x.user_id)
+    if (uid != null && authorId === uid) return false // author never counts unread for self
+    const readBy = Array.isArray(x.read_by) ? x.read_by.map((v) => Number(v)) : []
+    return uid != null ? !readBy.includes(uid) : false
+  }).length
+})
 </script>
 
 <template>
@@ -84,6 +106,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
       size="sm" @click="$emit('print', row)" />
     <IconifyButton v-if="canEmail" :icon-path="mdiEmailOutline" color="text-emerald-700" label="Email"
       tooltip="Send Email" size="sm" @click="$emit('email', row)" />
+
+    <!-- Remarks / Audit trail button with badge -->
+    <div class="relative inline-flex">
+      <IconifyButton :icon-path="mdiMessageTextOutline" color="text-slate-700" label="Remarks" tooltip="Remarks / Audit Trail" size="sm"
+        @click="$emit('remarks', row)" />
+      <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-rose-600 text-white">{{ unreadCount }}</span>
+    </div>
 
     <!-- Delete (moderators) -->
     <IconifyButton v-if="canModerate" :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete"
@@ -124,6 +153,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
           @click="open = false; $emit('print', row)">Print</button>
         <button v-if="canEmail" role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
           @click="open = false; $emit('email', row)">Send Email</button>
+        <button role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+          @click="open = false; $emit('remarks', row)">Remarks <span v-if="unreadCount">({{ unreadCount }} new)</span></button>
 
         <button v-if="canModerate" role="menuitem"
           class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"

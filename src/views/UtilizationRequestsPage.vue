@@ -24,6 +24,7 @@ import CalendarViewModal from '@/components/utilization/CalendarViewModal.vue'
 import QuickAvailabilityModal from '@/components/utilization/QuickAvailabilityModal.vue'
 
 import { printUtilizationRequestPdf, buildUtilizationRequestPdfDoc } from '@/utils/printUtilizationRequest'
+import StatusTrailModal from '@/components/commons/StatusTrailModal.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
@@ -45,6 +46,17 @@ const store = useUtilizationRequestStore()
 const { isClub, activeClubId, withClub } = useClubScope()
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const displayName = computed(() => { const ln = authStore.user?.last_name || ''; const fi = (authStore.user?.first_name || '').slice(0,1); return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}` })
+const parseRemarks = (v) => {
+  try {
+    const arr = Array.isArray(v) ? v : (JSON.parse(v || '[]') || [])
+    return (arr || []).map((it) => {
+      if (!it || typeof it !== 'object') return it
+      if (!Array.isArray(it.read_by)) it.read_by = (it.user_id != null ? [it.user_id] : [])
+      return it
+    })
+  } catch { return [] }
+}
 
 const calendarVisible = ref(false)
 const openCalendar = () => { calendarVisible.value = true }
@@ -73,6 +85,41 @@ const resetAvailability = () => {
     avEndDate.value = ''
     avEndTime.value = '10:00'
     avFacilities.value = []
+}
+
+/* Remarks modal */
+const remarksVisible = ref(false)
+const remarksRow = ref(null)
+const openRemarks = async (row) => {
+  try {
+    await store.fetchById(row.id)
+    remarksRow.value = store.selected || row
+  } catch {
+    remarksRow.value = row
+  }
+  remarksVisible.value = true
+}
+const addRemarkToRow = async (entry) => {
+  if (!remarksRow.value) return
+  const arr = parseRemarks(remarksRow.value.remarks)
+  arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: entry?.message || '', datetime: entry?.datetime || new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+  // Optimistic update for modal
+  try { remarksRow.value.remarks = JSON.stringify(arr) } catch {}
+  try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(arr) }); await fetchAll({}, true) } catch {}
+}
+const markAllReadForRow = async () => {
+  if (!remarksRow.value) return
+  const uid = authStore.user?.id || null
+  const arr = parseRemarks(remarksRow.value.remarks)
+  const next = arr.map(x => {
+    if (!x || x.user_id === uid) return x
+    const read_by = Array.isArray(x.read_by) ? x.read_by.slice() : []
+    if (!read_by.includes(uid)) read_by.push(uid)
+    return { ...x, read_by }
+  })
+  // Optimistic update for modal
+  try { remarksRow.value.remarks = JSON.stringify(next) } catch {}
+  try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(next) }); await fetchAll({}, true) } catch {}
 }
 
 /* Predefined facilities (authoritative list) */
@@ -362,6 +409,9 @@ const submitItem = async (row) => {
     if (!res.isConfirmed) return
 
     try {
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} submitted utilization request.`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.updateById(row.id, { remarks: JSON.stringify(arr) })
         await store.submit(row.id)
         await fetchAll({}, true)
         await Swal.fire('Submitted', 'Utilization request is now pending approval.', 'success')
@@ -386,7 +436,9 @@ const approveItem = async (row) => {
 
     const remarks = res.value || ''
     try {
-        await store.approve(row.id, remarks)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} approved utilization request.${remarks ? ' - ' + remarks : ''}`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.approve(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Approved', 'Utilization has been approved and reserved.', 'success')
     } catch {
@@ -412,7 +464,9 @@ const rejectItem = async (row) => {
 
     const remarks = res.value
     try {
-        await store.reject(row.id, remarks)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} rejected utilization request - ${remarks}.`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.reject(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Rejected', 'Utilization has been rejected.', 'success')
     } catch {
@@ -438,7 +492,9 @@ const cancelItem = async (row) => {
 
     const remarks = res.value
     try {
-        await store.cancel(row.id, remarks)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} cancelled utilization request - ${res.value}.`, datetime: new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+        await store.cancel(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Cancelled', 'Utilization has been cancelled.', 'success')
     } catch {
@@ -649,10 +705,10 @@ const resetFilters = async () => {
                 </template>
 
                 <template #cell-actions="{ row }">
-                    <ActivityRowActions :row="row"
+                    <ActivityRowActions :row="row" :current-user-id="authStore.user?.id"
                         :moderator="['admin', 'manager'].includes(String(authStore.user?.role || '').toLowerCase())"
                         @attachments="openAttachments" @submit="submitItem" @approve="approveItem" @reject="rejectItem"
-                        @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem"
+                        @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem" @remarks="openRemarks"
                         @print="printItem" @email="openEmail" />
                 </template>
             </BaseTable>
@@ -664,6 +720,8 @@ const resetFilters = async () => {
     <UtilizationRequestFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}"
         @submit="onEditSubmit" />
     <UtilizationAttachmentsModal v-model="attachVisible" :row="attachRow" />
+    <StatusTrailModal v-model="remarksVisible" :title="'Remarks • ' + (remarksRow?.reference_code || remarksRow?.activity_design?.name_of_activity || 'Item')" :items="parseRemarks(remarksRow?.remarks)"
+      :can-add="true" @add="addRemarkToRow" @markAllRead="markAllReadForRow" />
     <CalendarViewModal v-model="calendarVisible" @open="openFromCalendar" />
     <QuickAvailabilityModal v-model="quickCheckVisible" :facilities="FACILITY_OPTIONS" />
 

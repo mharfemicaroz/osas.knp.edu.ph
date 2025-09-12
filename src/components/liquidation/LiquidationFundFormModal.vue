@@ -7,6 +7,7 @@ import { useLiquidationFundStore } from '@/stores/liquidationFund'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useClubScope } from '@/utils/clubScope'
 import { useClubStore } from '@/stores/club'
+// Remarks trail UI removed; use page-level Remarks modal instead
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -71,12 +72,16 @@ onMounted(async () => {
 
 const form = ref(structuredClone(props.initial))
 const errors = ref({})
+const remarksItems = ref([])
+const parseRemarks = (v) => { if (!v) return []; if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]') || [] } catch { return [] } }
+const displayName = computed(() => { const ln = auth.user?.last_name || ''; const fi = (auth.user?.first_name || '').slice(0,1); return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}` })
 const notedByPristine = ref(true)
 const lastAutoNoted = ref('')
+const hasOpenedOnce = ref(false)
 
 watch(
     () => props.initial,
-    (v) => {
+    async (v) => {
         // normalize JSON -> object/array
         let src = v.sources_of_fund
         let uses = v.uses_of_fund
@@ -91,6 +96,19 @@ watch(
             uses_of_fund: Array.isArray(uses) ? uses : [],
         }
         errors.value = {}
+        remarksItems.value = parseRemarks(v?.remarks)
+        // Mark all as read when opening in edit mode
+        if (props.mode === 'edit' && (v?.id || form.value?.id)) {
+            if (!hasOpenedOnce.value) {
+                hasOpenedOnce.value = true
+            } else {
+                const hasUnread = remarksItems.value.some(x => x && x.is_read === false)
+                if (hasUnread) {
+                    remarksItems.value = remarksItems.value.map(x => ({ ...x, is_read: true }))
+                    try { await lfStore.updateById(v?.id || form.value.id, { remarks: JSON.stringify(remarksItems.value) }) } catch {}
+                }
+            }
+        }
         notedByPristine.value = !(v && String(v.noted_by || '').trim())
         lastAutoNoted.value = ''
     },
@@ -103,6 +121,8 @@ const titleText = computed(() =>
     props.mode !== 'edit' ? 'New Liquidation Fund' : (readOnly.value ? 'View Liquidation (read-only)' : 'Edit Liquidation')
 )
 const submitText = computed(() => (props.mode === 'edit' ? 'Save Changes' : 'Create'))
+const canAddNote = computed(() => props.mode === 'edit')
+const showTrail = computed(() => props.mode === 'edit')
 
 /* Activity Design label */
 const adLabel = (ad) => {
@@ -208,7 +228,61 @@ const onSubmit = () => {
     if (!payload.filed_by_user_id && auth.user?.id) payload.filed_by_user_id = auth.user.id
     // Only admins can set file_by_user_name
     if (!isAdmin.value) delete payload.file_by_user_name
+    // Append audit entry
+    const actionLabel = props.mode !== 'edit' ? 'created liquidation fund' : 'updated liquidation fund'
+    remarksItems.value.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: `${displayName.value} ${actionLabel}.`, datetime: new Date().toISOString(), is_read: false })
+    payload.remarks = JSON.stringify(remarksItems.value)
     emit('submit', payload)
+}
+
+const canCancel = computed(() => props.mode === 'edit' && isAdmin.value && String(form.value.status || '').toLowerCase() === 'pending')
+const addRemark = async (e) => {
+    const entry = {
+        user_id: auth.user?.id || null,
+        user_name: displayName.value,
+        message: e?.message || '',
+        datetime: e?.datetime || new Date().toISOString(),
+    }
+    remarksItems.value.push(entry)
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await lfStore.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+
+const markAllRead = async () => {
+    const hasUnread = remarksItems.value.some(x => x && x.is_read === false)
+    if (!hasUnread) return
+    remarksItems.value = remarksItems.value.map(x => ({ ...x, is_read: true }))
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await lfStore.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+const onCancel = async () => {
+    if (!form.value?.id) return
+    const { value: remarks, isConfirmed } = await Swal.fire({
+        title: 'Cancel Liquidation Fund?',
+        input: 'textarea',
+        inputLabel: 'Remarks (optional)',
+        inputPlaceholder: 'Reason for cancellation',
+        showCancelButton: true,
+        confirmButtonText: 'Cancel Liquidation',
+        confirmButtonColor: '#dc2626',
+    })
+    if (!isConfirmed) return
+    try {
+        const arr = parseRemarks(form.value?.remarks)
+        const msg = `${displayName.value} cancelled liquidation fund.${remarks ? ' - ' + remarks : ''}`
+        arr.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: msg, datetime: new Date().toISOString() })
+        const res = await lfStore.cancel(form.value.id, JSON.stringify(arr))
+        form.value = { ...form.value, ...(res || {}), status: (res?.status || 'cancelled') }
+        await Swal.fire('Cancelled', 'Liquidation Fund has been cancelled.', 'success')
+    } catch (e) {
+        await Swal.fire('Error', lfStore.error || 'Failed to cancel liquidation fund.', 'error')
+    }
 }
 </script>
 
@@ -378,10 +452,8 @@ const onSubmit = () => {
                     <input v-model="form.file_by_user_name" class="w-full border rounded px-2.5 py-2"
                         :disabled="readOnly" placeholder="If provided, this name appears as the filer" />
                 </div>
-                <div class="md:col-span-1 md:col-span-2">
-                    <label class="block mb-1">Remarks</label>
-                    <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2.5 py-2"
-                        :disabled="readOnly" placeholder="Optional remarks"></textarea>
+                <div v-if="showTrail" class="md:col-span-1 md:col-span-2">
+                    <!-- Remarks / Audit Trail moved to row action modal for consistency -->
                 </div>
             </div>
 
@@ -389,6 +461,9 @@ const onSubmit = () => {
             <!-- Footer -->
             <div class="flex justify-end gap-2 mt-5">
                 <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
+                <button v-if="canCancel" class="px-4 py-2 bg-red-600 text-white rounded text-xs" @click="onCancel">
+                    Cancel Liquidation
+                </button>
                 <button v-if="!readOnly" class="px-4 py-2 bg-blue-600 text-white rounded text-xs" v-pending-click="onSubmit">
                     {{ submitText }}
                 </button>

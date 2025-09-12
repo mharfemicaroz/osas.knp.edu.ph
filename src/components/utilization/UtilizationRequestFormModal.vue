@@ -7,6 +7,7 @@ import { useUtilizationRequestStore } from '@/stores/utilizationRequest'
 import { useClubStore } from '@/stores/club'
 import { useActivityDesignStore } from '@/stores/activityDesign'
 import Swal from 'sweetalert2'
+// Remarks trail UI removed; use page-level Remarks modal instead
 
 /* ---------- PREDEFINED OPTIONS (authoritative lists) ---------- */
 const FACILITY_OPTIONS = [
@@ -95,6 +96,9 @@ onMounted(async () => {
 
 const form = ref({ ...props.initial })
 const errors = ref({})
+const remarksItems = ref([])
+const parseRemarks = (v) => { if (!v) return []; if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]') || [] } catch { return [] } }
+const displayName = computed(() => { const ln = auth.user?.last_name || ''; const fi = (auth.user?.first_name || '').slice(0,1); return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}` })
 const notedByPristine = ref(true)
 const lastAutoNoted = ref('')
 
@@ -130,7 +134,7 @@ const autoFillNotedBy = () => {
 /* Keep form in sync with incoming props + sanitize arrays */
 watch(
     () => props.initial,
-    (v) => {
+    async (v) => {
         form.value = {
             ...v,
             facilities: Array.isArray(v.facilities)
@@ -145,6 +149,9 @@ watch(
         form.value.equipment_items = (form.value.equipment_items || []).filter((e) => !e?.name || EQUIPMENT_OPTIONS.includes(e.name))
 
         errors.value = {}
+        remarksItems.value = parseRemarks(v?.remarks)
+        // Mark all as read when opening in edit mode
+        // no auto-mark as read on open
         notedByPristine.value = !(v && String(v.noted_by || '').trim())
         lastAutoNoted.value = ''
     },
@@ -181,6 +188,8 @@ const titleText = computed(() =>
     props.mode !== 'edit' ? 'New Utilization Request' : (readOnly.value ? 'View Utilization (read-only)' : 'Edit Utilization')
 )
 const submitText = computed(() => (props.mode === 'edit' ? 'Save Changes' : 'Create'))
+const canAddNote = computed(() => props.mode === 'edit')
+const showTrail = computed(() => props.mode === 'edit')
 
 /* ---------- Activity Design select label ---------- */
 const adLabel = (ad) => {
@@ -323,7 +332,63 @@ const onSubmit = () => {
     // Only admins can set file_by_user_name
     if (!isAdmin.value) delete payload.file_by_user_name
 
+    // Append audit entry
+    const actionLabel = props.mode !== 'edit' ? 'created utilization request' : 'updated utilization request'
+    remarksItems.value.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: `${displayName.value} ${actionLabel}.`, datetime: new Date().toISOString(), is_read: false })
+    payload.remarks = JSON.stringify(remarksItems.value)
+
     emit('submit', payload)
+}
+
+const addRemark = async (e) => {
+    const entry = {
+        user_id: auth.user?.id || null,
+        user_name: displayName.value,
+        message: e?.message || '',
+        datetime: e?.datetime || new Date().toISOString(),
+    }
+    remarksItems.value.push(entry)
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await urStore.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+
+const markAllRead = async () => {
+    const hasUnread = remarksItems.value.some(x => x && x.is_read === false)
+    if (!hasUnread) return
+    remarksItems.value = remarksItems.value.map(x => ({ ...x, is_read: true }))
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await urStore.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+
+const canCancel = computed(() => props.mode === 'edit' && isAdmin.value && String(form.value.status || '').toLowerCase() === 'pending')
+const onCancel = async () => {
+    if (!form.value?.id) return
+    const { value: remarks, isConfirmed } = await Swal.fire({
+        title: 'Cancel Utilization Request?',
+        input: 'textarea',
+        inputLabel: 'Remarks (optional)',
+        inputPlaceholder: 'Reason for cancellation',
+        showCancelButton: true,
+        confirmButtonText: 'Cancel Request',
+        confirmButtonColor: '#dc2626',
+    })
+    if (!isConfirmed) return
+    try {
+        const arr = parseRemarks(form.value?.remarks)
+        const msg = `${displayName.value} cancelled utilization request.${remarks ? ' - ' + remarks : ''}`
+        arr.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: msg, datetime: new Date().toISOString() })
+        const res = await urStore.cancel(form.value.id, JSON.stringify(arr))
+        form.value = { ...form.value, ...(res || {}), status: (res?.status || 'cancelled') }
+        await Swal.fire('Cancelled', 'Utilization Request has been cancelled.', 'success')
+    } catch (e) {
+        await Swal.fire('Error', urStore.error || 'Failed to cancel utilization request.', 'error')
+    }
 }
 </script>
 
@@ -506,12 +571,8 @@ const onSubmit = () => {
                 </div>
             </div>
 
-            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div>
-                    <label class="block mb-0.5">Remarks</label>
-                    <textarea v-model="form.remarks" rows="3" class="w-full border rounded px-2 py-1.5"
-                        :disabled="readOnly" placeholder="Optional notes for approvers" />
-                </div>
+            <div v-if="showTrail" class="mt-2 text-sm">
+                <!-- Remarks / Audit Trail moved to row action modal for consistency -->
             </div>
 
             <!-- Availability -->
@@ -530,6 +591,9 @@ const onSubmit = () => {
             <!-- Footer -->
             <div class="flex justify-end gap-1.5 mt-4">
                 <button class="px-3 py-1.5 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
+                <button v-if="canCancel" class="px-3 py-1.5 bg-red-600 text-white rounded text-xs" @click="onCancel">
+                    Cancel Request
+                </button>
                 <button v-if="!readOnly" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs" v-pending-click="onSubmit">
                     {{ submitText }}
                 </button>

@@ -1,9 +1,12 @@
 <!-- src/components/activity/ActivityDesignFormModal.vue -->
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
+import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
+import { useActivityDesignStore } from '@/stores/activityDesign'
 import { useClubStore } from '@/stores/club'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
+// Remarks trail UI removed; use page-level Remarks modal instead
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -49,6 +52,7 @@ const visible = computed({
 
 const auth = useAuthStore()
 const clubStore = useClubStore()
+const adStore = useActivityDesignStore()
 const apStore = useAnnualPlanStore()
 const currentUserId = computed(() => auth.user?.id || null)
 const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
@@ -96,6 +100,19 @@ const clubAdviserById = (id) => {
 }
 const currentClubAdviser = computed(() => (clubAdviserById(form.value.club_id) || '').trim())
 const notedByLocked = computed(() => currentClubAdviser.value.length > 0)
+
+// Remarks trail handling
+const remarksItems = ref([])
+const parseRemarks = (v) => {
+    if (!v) return []
+    if (Array.isArray(v)) return v
+    try { return JSON.parse(v || '[]') || [] } catch { return [] }
+}
+const displayName = computed(() => {
+    const ln = auth.user?.last_name || ''
+    const fi = (auth.user?.first_name || '').slice(0,1)
+    return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}`
+})
 
 /* ---------- annual plan computed lists ---------- */
 // show all approved plans; club will auto-lock to the plan's club after selection
@@ -145,9 +162,12 @@ onMounted(async () => {
 // Track if noted_by is prefilled on edit to avoid overwriting
 watch(
     () => props.initial,
-    (v) => {
+    async (v) => {
         notedByPristine.value = !(v && String(v.noted_by || '').trim())
         lastAutoNoted.value = ''
+        remarksItems.value = parseRemarks(v?.remarks)
+        // Mark all as read when opening in edit mode
+        // no auto-mark as read on open
     },
     { immediate: true }
 )
@@ -291,6 +311,8 @@ const resetAnnualLink = () => {
 
 const statusSafe = computed(() => String(form.value?.status || '').toLowerCase())
 const readOnly = computed(() => props.mode === 'edit' && statusSafe.value !== 'draft')
+const canAddNote = computed(() => props.mode === 'edit')
+// Remarks trail is handled via page-level modal
 
 const titleText = computed(() =>
     props.mode !== 'edit'
@@ -362,7 +384,61 @@ const onSubmit = () => {
     if (payload.annual_plan_id === '') payload.annual_plan_id = null
     // annual_plan_item can remain an object; backend will stringify if needed
 
+    // Append audit entry
+    const actionLabel = props.mode !== 'edit' ? 'created activity design' : 'updated activity design'
+    remarksItems.value.push({ user_id: currentUserId.value, user_name: displayName.value, message: `${displayName.value} ${actionLabel}.`, datetime: new Date().toISOString(), is_read: false })
+    payload.remarks = JSON.stringify(remarksItems.value)
+
     emit('submit', payload)
+}
+
+const canCancel = computed(() => props.mode === 'edit' && isAdmin.value && String(form.value.status || '').toLowerCase() === 'pending')
+const addRemark = async (e) => {
+    const entry = {
+        user_id: currentUserId.value,
+        user_name: displayName.value,
+        message: e?.message || '',
+        datetime: e?.datetime || new Date().toISOString(),
+    }
+    remarksItems.value.push(entry)
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await adStore.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) {
+        // swallow; UI already updated, backend sync can be retried on next save
+    }
+}
+
+const markAllRead = async () => {
+    const hasUnread = remarksItems.value.some(x => x && x.is_read === false)
+    if (!hasUnread) return
+    remarksItems.value = remarksItems.value.map(x => ({ ...x, is_read: true }))
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await adStore.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+const onCancel = async () => {
+    if (!form.value?.id) return
+    const { value: remarks, isConfirmed } = await Swal.fire({
+        title: 'Cancel Activity Design?',
+        input: 'textarea',
+        inputLabel: 'Remarks (optional)',
+        inputPlaceholder: 'Reason for cancellation',
+        showCancelButton: true,
+        confirmButtonText: 'Cancel Activity',
+        confirmButtonColor: '#dc2626',
+    })
+    if (!isConfirmed) return
+    try {
+        await adStore.cancel(form.value.id, remarks || '')
+        await Swal.fire('Cancelled', 'Activity Design has been cancelled.', 'success')
+        form.value.status = 'cancelled'
+    } catch (e) {
+        await Swal.fire('Error', adStore.error || 'Failed to cancel activity design.', 'error')
+    }
 }
 </script>
 
@@ -586,11 +662,7 @@ const onSubmit = () => {
                 <p v-if="errors.noted_by" class="text-red-600 text-[11px] mt-0.5">{{ errors.noted_by }}</p>
             </div>
 
-            <div class="mt-2 text-sm">
-                <label class="block mb-0.5">Remarks</label>
-                <textarea v-model="form.remarks" rows="2" class="w-full border rounded px-2 py-1.5"
-                    :disabled="readOnly" />
-            </div>
+            <!-- Remarks / Audit Trail moved to row action modal for consistency -->
 
             <input type="hidden" v-model="form.filed_by_user_id" />
             <input type="hidden" v-model="form.office_department" />
@@ -598,6 +670,9 @@ const onSubmit = () => {
 
             <div class="flex justify-end gap-1.5 mt-4">
                 <button class="px-3 py-1.5 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
+                <button v-if="canCancel" class="px-3 py-1.5 bg-red-600 text-white rounded text-xs" @click="onCancel">
+                    Cancel Activity
+                </button>
                 <button v-if="!readOnly" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs" v-pending-click="onSubmit">
                     {{ submitText }}
                 </button>

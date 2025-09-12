@@ -14,6 +14,7 @@ import AnnualPlanRowActions from '@/components/annualPlan/AnnualPlanRowActions.v
 import AnnualPlanFormModal from '@/components/annualPlan/AnnualPlanFormModal.vue'
 import AnnualPlanAttachmentsModal from '@/components/annualPlan/AnnualPlanAttachmentsModal.vue'
 import AnnualPlansCalendarModal from '@/components/annualPlan/AnnualPlansCalendarModal.vue'
+import StatusTrailModal from '@/components/commons/StatusTrailModal.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useAnnualPlanStore } from '@/stores/annualPlan'
@@ -27,10 +28,53 @@ import {
 const store = useAnnualPlanStore()
 const authStore = useAuthStore()
 const isAdminManager = computed(() => ['admin','manager'].includes(String(authStore.user?.role || '').toLowerCase()))
+const displayName = computed(() => { const ln = authStore.user?.last_name || ''; const fi = (authStore.user?.first_name || '').slice(0,1); return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}` })
+const parseRemarks = (v) => {
+  try {
+    const arr = Array.isArray(v) ? v : (JSON.parse(v || '[]') || [])
+    return (arr || []).map((it) => {
+      if (!it || typeof it !== 'object') return it
+      if (!Array.isArray(it.read_by)) it.read_by = (it.user_id != null ? [it.user_id] : [])
+      return it
+    })
+  } catch {
+    return []
+  }
+}
 
 /* Calendar modal */
 const calendarVisible = ref(false)
 const openCalendar = () => { calendarVisible.value = true }
+
+/* Remarks modal */
+const remarksVisible = ref(false)
+const remarksRow = ref(null)
+const openRemarks = async (row) => {
+    try { await store.fetchById(row.id); remarksRow.value = store.selected || row } catch { remarksRow.value = row }
+    remarksVisible.value = true
+}
+const addRemarkToRow = async (entry) => {
+    if (!remarksRow.value) return
+    const arr = parseRemarks(remarksRow.value.remarks)
+    arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: entry?.message || '', datetime: entry?.datetime || new Date().toISOString(), is_read: false, read_by: [authStore.user?.id || null] })
+    // Optimistically update modal view
+    try { remarksRow.value.remarks = JSON.stringify(arr) } catch {}
+    try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(arr) }); await fetchAll({}, true) } catch {}
+}
+const markAllReadForRow = async () => {
+    if (!remarksRow.value) return
+    const uid = authStore.user?.id || null
+    const arr = parseRemarks(remarksRow.value.remarks)
+    const next = arr.map(x => {
+      if (!x || x.user_id === uid) return x
+      const read_by = Array.isArray(x.read_by) ? x.read_by.slice() : []
+      if (!read_by.includes(uid)) read_by.push(uid)
+      return { ...x, read_by }
+    })
+    // Optimistically update modal view
+    try { remarksRow.value.remarks = JSON.stringify(next) } catch {}
+    try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(next) }); await fetchAll({}, true) } catch {}
+}
 const openFromCalendar = async (annualPlanId) => {
     try {
         await store.fetchById(annualPlanId)
@@ -190,6 +234,9 @@ const submitItem = async (row) => {
     })
     if (!res.isConfirmed) return
     try {
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} submitted annual plan.`, datetime: new Date().toISOString(), is_read: false })
+        await store.updateById(row.id, { remarks: JSON.stringify(arr) })
         await store.submit(row.id)
         await fetchAll({}, true)
         await Swal.fire('Submitted', 'Annual plan is now pending approval.', 'success')
@@ -205,7 +252,10 @@ const approveItem = async (row) => {
     })
     if (!res.isConfirmed) return
     try {
-        await store.approve(row.id, res.value || '')
+        const arr = parseRemarks(row.remarks)
+        const note = res.value || ''
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} approved annual plan.${note ? ' - ' + note : ''}`, datetime: new Date().toISOString(), is_read: false })
+        await store.approve(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Approved', 'Annual plan has been approved.', 'success')
     } catch {
@@ -221,7 +271,9 @@ const rejectItem = async (row) => {
     })
     if (!res.isConfirmed) return
     try {
-        await store.reject(row.id, res.value)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} rejected annual plan - ${res.value}.`, datetime: new Date().toISOString(), is_read: false })
+        await store.reject(row.id, JSON.stringify(arr))
         await fetchAll({}, true)
         await Swal.fire('Rejected', 'Annual plan has been rejected.', 'success')
     } catch {
@@ -237,8 +289,10 @@ const cancelItem = async (row) => {
     })
     if (!res.isConfirmed) return
     try {
-        // Perform cancel action, then revert status back to draft for editing
-        await store.cancel(row.id, res.value)
+        const arr = parseRemarks(row.remarks)
+        arr.push({ user_id: authStore.user?.id || null, user_name: displayName.value, message: `${displayName.value} cancelled annual plan - ${res.value}.`, datetime: new Date().toISOString(), is_read: false })
+        // Perform cancel action with remarks log, then revert status back to draft for editing
+        await store.cancel(row.id, JSON.stringify(arr))
         await store.updateById(row.id, { status: 'draft' })
         await fetchAll({}, true)
         await Swal.fire('Moved to Draft', 'Annual plan was cancelled and returned to Draft for editing.', 'success')
@@ -332,10 +386,10 @@ const openAttachments = async (row) => {
                     <Badge :text="value || '—'" :tone="statusTone(value)" />
                 </template>
                 <template #cell-actions="{ row }">
-                    <AnnualPlanRowActions :row="row" :busy="store.isActing(row.id)"
+                    <AnnualPlanRowActions :row="row" :busy="store.isActing(row.id)" :current-user-id="authStore.user?.id"
                         :moderator="isAdminManager"
                         @attachments="openAttachments" @submit="submitItem" @approve="approveItem" @reject="rejectItem"
-                        @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem" />
+                        @edit="openEdit" @delete="confirmDelete" @view="openView(row)" @cancel="cancelItem" @remarks="openRemarks" />
                 </template>
             </BaseTable>
         </SectionMain>
@@ -346,4 +400,6 @@ const openAttachments = async (row) => {
     <AnnualPlanFormModal v-model="editVisible" mode="edit" :initial="editInitial || {}" @submit="onEditSubmit" />
     <AnnualPlanAttachmentsModal v-model="attachVisible" :row="attachRow" />
     <AnnualPlansCalendarModal v-model="calendarVisible" @open="openFromCalendar" />
+    <StatusTrailModal v-model="remarksVisible" :title="'Remarks • ' + (remarksRow?.reference_code || 'Annual Plan')" :items="parseRemarks(remarksRow?.remarks)"
+      :can-add="true" @add="addRemarkToRow" @markAllRead="markAllReadForRow" />
 </template>

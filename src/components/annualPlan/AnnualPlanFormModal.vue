@@ -34,6 +34,7 @@ const visible = computed({
 
 const auth = useAuthStore()
 const store = useAnnualPlanStore()
+const isAdmin = computed(() => String(auth.user?.role || '').toLowerCase() === 'admin')
 
 const schoolYearOptions = computed(() => {
     const y = new Date().getFullYear()
@@ -51,7 +52,10 @@ onMounted(async () => { await loadClubs(); if (props.lockedClubId) form.value.cl
 
 const form = ref(structuredClone(props.initial))
 const errors = ref({})
-watch(() => props.initial, (v) => {
+const remarksItems = ref([])
+const parseRemarks = (v) => { if (!v) return []; if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]') || [] } catch { return [] } }
+const displayName = computed(() => { const ln = auth.user?.last_name || ''; const fi = (auth.user?.first_name || '').slice(0,1); return `${ln}${ln ? ', ' : ''}${fi ? fi + '.' : ''}` })
+watch(() => props.initial, async (v) => {
     let plans = v?.plans
     try { plans = Array.isArray(plans) ? plans : JSON.parse(plans || '[]') } catch { plans = [] }
     form.value = {
@@ -60,6 +64,15 @@ watch(() => props.initial, (v) => {
         plans: Array.isArray(plans) ? plans : [],
     }
     errors.value = {}
+    remarksItems.value = parseRemarks(v?.remarks)
+    // Mark all as read when opening in edit mode
+    if (props.mode === 'edit' && (v?.id || form.value?.id)) {
+        const hasUnread = remarksItems.value.some(x => x && x.is_read === false)
+        if (hasUnread) {
+            remarksItems.value = remarksItems.value.map(x => ({ ...x, is_read: true }))
+            try { await store.updateById(v?.id || form.value.id, { remarks: JSON.stringify(remarksItems.value) }) } catch {}
+        }
+    }
 }, { immediate: true })
 
 const readOnly = computed(() => props.mode === 'edit' && String(form.value.status || '').toLowerCase() !== 'draft')
@@ -67,6 +80,7 @@ const titleText = computed(() =>
     props.mode !== 'edit' ? 'New Annual Plan' : (readOnly.value ? 'View Annual Plan (read-only)' : 'Edit Annual Plan')
 )
 const submitText = computed(() => (props.mode === 'edit' ? 'Save Changes' : 'Create'))
+// Remarks trail UI removed; use page-level Remarks modal instead
 const currency = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const num = (v) => (Number.isFinite(+v) ? +v : 0)
@@ -106,7 +120,62 @@ const onSubmit = () => {
     if (!validate()) return
     const payload = { ...form.value }
     if (!payload.filed_by_user_id && auth.user?.id) payload.filed_by_user_id = auth.user.id
+    // Append audit entry
+    const actionLabel = props.mode !== 'edit' ? 'created annual plan' : 'updated annual plan'
+    remarksItems.value.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: `${displayName.value} ${actionLabel}.`, datetime: new Date().toISOString(), is_read: false })
+    payload.remarks = JSON.stringify(remarksItems.value)
     emit('submit', payload)
+}
+
+const canCancel = computed(() => props.mode === 'edit' && isAdmin.value && String(form.value.status || '').toLowerCase() === 'pending')
+const addRemark = async (e) => {
+    const entry = {
+        user_id: auth.user?.id || null,
+        user_name: displayName.value,
+        message: e?.message || '',
+        datetime: e?.datetime || new Date().toISOString(),
+    }
+    remarksItems.value.push(entry)
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await store.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+
+const markAllRead = async () => {
+    const hasUnread = remarksItems.value.some(x => x && x.is_read === false)
+    if (!hasUnread) return
+    remarksItems.value = remarksItems.value.map(x => ({ ...x, is_read: true }))
+    try {
+        if (props.mode === 'edit' && form.value?.id) {
+            await store.updateById(form.value.id, { remarks: JSON.stringify(remarksItems.value) })
+        }
+    } catch (err) { }
+}
+const onCancel = async () => {
+    if (!form.value?.id) return
+    const { value: remarks, isConfirmed } = await Swal.fire({
+        title: 'Cancel Annual Plan?',
+        input: 'textarea',
+        inputLabel: 'Remarks (optional)',
+        inputPlaceholder: 'Reason for cancellation',
+        showCancelButton: true,
+        confirmButtonText: 'Cancel Plan',
+        confirmButtonColor: '#dc2626',
+    })
+    if (!isConfirmed) return
+    try {
+        // Build updated remarks log
+        const arr = parseRemarks(form.value?.remarks)
+        const msg = `${displayName.value} cancelled annual plan.${remarks ? ' - ' + remarks : ''}`
+        arr.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: msg, datetime: new Date().toISOString() })
+        const res = await store.cancel(form.value.id, JSON.stringify(arr))
+        form.value = { ...form.value, ...(res || {}), status: (res?.status || 'cancelled') }
+        await Swal.fire('Cancelled', 'Annual Plan has been cancelled.', 'success')
+    } catch (e) {
+        await Swal.fire('Error', store.error || 'Failed to cancel annual plan.', 'error')
+    }
 }
 </script>
 
@@ -151,11 +220,7 @@ const onSubmit = () => {
                     </select>
                     <p v-if="errors.club_id" class="text-[11px] text-red-600 mt-1">{{ errors.club_id }}</p>
                 </div>
-                <div>
-                    <label class="block mb-1">Remarks</label>
-                    <input v-model="form.remarks" class="w-full border rounded px-2.5 py-2" :disabled="readOnly"
-                        placeholder="Optional remarks" />
-                </div>
+                <!-- Remarks / Audit Trail moved to row action modal for consistency -->
             </div>
 
             <!-- Plan items -->
@@ -222,6 +287,9 @@ const onSubmit = () => {
             <!-- Footer -->
             <div class="flex justify-end gap-2 mt-5">
                 <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="visible = false">Close</button>
+                <button v-if="canCancel" class="px-4 py-2 bg-red-600 text-white rounded text-xs" @click="onCancel">
+                    Cancel Plan
+                </button>
                 <button v-if="!readOnly" class="px-4 py-2 bg-blue-600 text-white rounded text-xs" v-pending-click="onSubmit">
                     {{ submitText }}
                 </button>

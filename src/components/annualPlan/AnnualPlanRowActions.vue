@@ -4,15 +4,16 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import IconifyButton from '@/components/commons/IconifyButton.vue'
 import {
     mdiPaperclip, mdiSend, mdiCheckDecagram, mdiCloseOctagon,
-    mdiPencil, mdiEye, mdiTrashCan, mdiDotsHorizontal, mdiCancel
+    mdiPencil, mdiEye, mdiTrashCan, mdiDotsHorizontal, mdiCancel, mdiMessageTextOutline
 } from '@mdi/js'
 
 const props = defineProps({
     row: { type: Object, required: true },
     moderator: { type: Boolean, default: false },
     busy: { type: Boolean, default: false },
+    currentUserId: { type: [String, Number], default: null },
 })
-const emit = defineEmits(['attachments', 'submit', 'approve', 'reject', 'edit', 'delete', 'view', 'cancel'])
+const emit = defineEmits(['attachments', 'submit', 'approve', 'reject', 'edit', 'delete', 'view', 'cancel', 'remarks'])
 
 const statusSafe = computed(() => String(props.row?.status || '').toLowerCase())
 const canSubmit = computed(() => statusSafe.value === 'draft')
@@ -20,7 +21,7 @@ const canEdit = computed(() => statusSafe.value === 'draft')
 const canView = computed(() => statusSafe.value !== 'draft')
 const canModerate = computed(() => props.moderator && statusSafe.value === 'pending')
 // Cancel and Delete must be admin/manager only
-const canCancel = computed(() => props.moderator && statusSafe.value === 'approved')
+const canCancel = computed(() => props.moderator && (statusSafe.value === 'approved' || statusSafe.value === 'pending'))
 const canDelete = computed(() => props.moderator)
 
 const open = ref(false)
@@ -33,6 +34,25 @@ const onDocumentClick = (e) => {
 }
 onMounted(() => document.addEventListener('click', onDocumentClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+
+// Remarks helpers for unread badge (keep in sync with other modules)
+const parseRemarks = (r) => {
+  if (!r) return []
+  if (Array.isArray(r)) return r
+  try { return JSON.parse(r || '[]') || [] } catch { return [] }
+}
+const unreadCount = computed(() => {
+  const uid = props.currentUserId == null ? null : Number(props.currentUserId)
+  const items = parseRemarks(props.row?.remarks) || []
+  return items.filter((x) => {
+    if (!x) return false
+    if (x.is_read === true) return false // legacy global read
+    const authorId = x.user_id == null ? null : Number(x.user_id)
+    if (uid != null && authorId === uid) return false
+    const readBy = Array.isArray(x.read_by) ? x.read_by.map((v) => Number(v)) : []
+    return uid != null ? !readBy.includes(uid) : false
+  }).length
+})
 </script>
 
 <template>
@@ -55,6 +75,12 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 
         <IconifyButton v-if="canCancel" :icon-path="mdiCancel" color="text-orange-600" label="Cancel"
             tooltip="Cancel plan" size="sm" :disabled="busy" @click="$emit('cancel', row)" />
+
+        <div class="relative inline-flex">
+          <IconifyButton :icon-path="mdiMessageTextOutline" color="text-slate-700" label="Remarks" tooltip="Remarks / Audit Trail" size="sm"
+            :disabled="busy" @click="$emit('remarks', row)" />
+          <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-rose-600 text-white">{{ unreadCount }}</span>
+        </div>
 
         <IconifyButton v-if="canDelete" :icon-path="mdiTrashCan" color="text-red-600" label="Delete" tooltip="Delete" size="sm"
             :disabled="busy" @click="$emit('delete', row)" />
@@ -84,6 +110,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
                     @click="open = false; $emit('reject', row)">Reject</button>
                 <button v-if="canCancel" role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                     @click="open = false; $emit('cancel', row)">Cancel</button>
+                <button role="menuitem" class="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                    @click="open = false; $emit('remarks', row)">Remarks <span v-if="unreadCount">({{ unreadCount }} new)</span></button>
                 <button v-if="canDelete" role="menuitem" class="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                     @click="open = false; $emit('delete', row)">Delete</button>
             </div>
