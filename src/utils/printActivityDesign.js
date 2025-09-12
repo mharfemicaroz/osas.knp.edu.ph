@@ -413,39 +413,37 @@ async function buildActivityDesignPdfDoc(a) {
       fontStyle: "bold",
     },
     head: [["PREPARED BY:", "NOTED BY:", "RECOMMENDING APPROVAL:"]],
-    body: [[preparer || " ", noted || " ", approver || " "]],
+    body: [
+      [preparer || " ", noted || " ", approver || " "],
+      [
+        {
+          content: "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA",
+          colSpan: 3,
+          styles: {
+            halign: "center",
+            fontStyle: "bold",
+            cellPadding: { top: 4, right: 10, bottom: 4, left: 10 },
+          },
+        },
+      ],
+    ],
     columnStyles: {
       0: { cellWidth: (pageW - marginX * 2) / 3 },
       1: { cellWidth: (pageW - marginX * 2) / 3 },
       2: { cellWidth: "auto" },
     },
     didParseCell: (data) => {
-      if (data.section === "body") {
+      if (data.section === "body" && data.row.index === 0) {
         data.cell.styles.halign = "center";
         data.cell.styles.fontStyle = "bold";
         data.cell.styles.cellPadding = {
           top: 16,
           right: 10,
-          bottom: 18,
+          bottom: 4,
           left: 10,
         };
       }
     },
-    margin: { left: marginX, right: marginX },
-  });
-
-  // Additional approval line under signatures
-  cursorY = doc.lastAutoTable.finalY + 6;
-  autoTable(doc, {
-    startY: cursorY,
-    theme: "plain",
-    styles: { fontSize: 10, halign: "center" },
-    body: [[
-      {
-        content:
-          "Approved by: DR. MARY ANN R. ARAULA (Acting College President)",
-      },
-    ]],
     margin: { left: marginX, right: marginX },
   });
 
