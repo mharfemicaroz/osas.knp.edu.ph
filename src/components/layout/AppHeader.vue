@@ -15,6 +15,53 @@
 
     <nav class="relative flex items-center gap-4">
       <div class="relative">
+        <div v-if="msgsOpen" class="fixed inset-0 z-30" @click="msgsOpen = false"></div>
+        <button ref="msgsBtnRef"
+          class="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+          :class="shouldMsgAttention ? 'bell-attn-container' : ''" @click="toggleMsgs" aria-label="Messages">
+          <span v-if="shouldMsgAttention" class="absolute inset-0 pointer-events-none bell-ring"></span>
+          <i class="mdi mdi-message-text-outline text-xl" :class="shouldMsgAttention ? 'bell-attn' : ''"></i>
+          <span v-if="msgsBadge > 0"
+            class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[10px] leading-4 text-center">
+            {{ Math.min(msgsBadge, 99) }}
+          </span>
+        </button>
+
+        <div v-if="msgsOpen" ref="msgsPanelRef" class="fixed z-40 translate-x-0" :style="msgsStyle">
+          <div class="absolute -top-2 h-3 w-3 rotate-45 bg-white ring-1 ring-black/5"
+            :style="{ right: msgsCaretRight + 'px' }"></div>
+          <div class="relative bg-white text-gray-900 rounded-xl shadow-2xl ring-1 ring-black/5 overflow-hidden">
+            <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+              <div class="text-[11px] uppercase tracking-wide text-gray-500">Messages</div>
+              <button class="text-xs text-indigo-600 hover:underline" @click="markAllMsgRead">Mark all read</button>
+            </div>
+            <div v-if="msgsStore.isLoading" class="p-3 text-sm text-gray-500">Loading…</div>
+            <div v-else class="overflow-auto" :style="{ maxHeight: notifBodyMaxHeight }">
+              <div v-if="!msgsList.length" class="p-3 text-sm text-gray-500">No unread remarks</div>
+              <ul v-else>
+                <li v-for="m in msgsList" :key="m.key" class="px-4 py-3 border-b flex items-start gap-2 hover:bg-gray-50">
+                  <div class="mt-0.5">
+                    <i class="mdi mdi-message-text-outline text-indigo-600"></i>
+                  </div>
+                  <button class="flex-1 min-w-0 text-left" @click="openMsg(m)">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">{{ m.module }}</span>
+                      <span class="text-xs text-gray-500 truncate">{{ m.reference }}</span>
+                    </div>
+                    <div class="text-sm truncate" :title="m.message">{{ m.message }}</div>
+                    <div class="text-[11px] text-gray-500">{{ m.datetime ? new Date(m.datetime).toLocaleString() : '' }}</div>
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div class="px-3 py-2 bg-gray-50 border-t text-right flex items-center justify-between">
+              <button class="text-xs text-gray-600" @click="msgsOpen = false">Close</button>
+              <button class="text-xs text-indigo-600 hover:underline" @click="openMsgsAll">View all</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="relative">
         <div v-if="notifOpen" class="fixed inset-0 z-30" @click="notifOpen = false"></div>
         <button ref="notifBtnRef"
           class="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
@@ -209,6 +256,7 @@
 
   <ClubsListModal v-model="showClubs" :clubs="clubs" :loading="loadingClubs" @select="goToClub" />
   <NotificationsListModal v-model="showNotifs" />
+  <MessagesInboxModal v-model="showMsgs" />
 </template>
 
 <script setup>
@@ -220,6 +268,8 @@ import { useAppContextStore } from '@/stores/appContext'
 import ClubsListModal from '@/components/clubs/ClubsListModal.vue'
 import NotificationsListModal from '@/components/notifications/NotificationsListModal.vue'
 import { useNotificationStore } from '@/stores/notification'
+import { useRemarksInboxStore } from '@/stores/remarksInbox'
+import MessagesInboxModal from '@/components/remarks/MessagesInboxModal.vue'
 defineOptions({ name: "AppHeader" });
 
 const props = defineProps({
@@ -244,6 +294,7 @@ const auth = useAuthStore()
 const userStore = useUserStore()
 const appCtx = useAppContextStore()
 const notifStore = useNotificationStore()
+const msgsStore = useRemarksInboxStore()
 
 const API_ROOT = import.meta.env.VITE_API_ROOT_URL || ''
 const mediaUrl = (v) => {
@@ -306,6 +357,80 @@ const goToProfile = () => {
   else router.push({ name: 'profile' })
 }
 
+/* Messages inbox */
+const msgsOpen = ref(false)
+const msgsBadge = computed(() => msgsStore.unreadTotal || 0)
+const msgsList = computed(() => (msgsStore.items || []).slice(0, 10))
+const openMsgs = async () => { if (!auth?.token) return; await msgsStore.fetchUnread({ limitPerModule: 10 }) }
+const markAllMsgRead = async () => { await msgsStore.markAllRead(); await msgsStore.fetchUnread({ limitPerModule: 10 }) }
+const openMsg = async (m) => {
+  if (!m) return
+  const map = { AD: 'activity-designs', UR: 'utilization-requests', LF: 'liquidation-funds', AP: 'annual-plans' }
+  const routeName = map[m.module] || 'dashboard'
+  msgsOpen.value = false
+  router.push({ name: routeName, query: { open_remarks_type: m.module, open_remarks_id: m.entityId } })
+}
+const showMsgs = ref(false)
+const openMsgsAll = async () => { showMsgs.value = true; await msgsStore.fetchUnread({ limitPerModule: 50 }) }
+
+// positioning for messages panel
+const msgsBtnRef = ref(null)
+const msgsPanelRef = ref(null)
+const msgsStyle = ref({ top: '0px', left: '0px', width: '360px' })
+const msgsCaretRight = ref(12)
+function positionMsgsPanel() {
+  const btn = msgsBtnRef.value
+  const panel = msgsPanelRef.value
+  if (!btn || !panel) return
+  const rect = btn.getBoundingClientRect()
+  const vw = window.innerWidth || document.documentElement.clientWidth
+  const vh = window.innerHeight || document.documentElement.clientHeight
+  const width = Math.min(380, Math.max(280, Math.round(vw * 0.94)))
+  const sidePad = 8
+  const gap = 8
+
+  let top = Math.round(rect.bottom + gap)
+  let left = Math.round(Math.min(Math.max(sidePad, rect.right - width), vw - width - sidePad))
+  msgsStyle.value = { top: `${top}px`, left: `${left}px`, width: `${width}px` }
+  notifBodyMaxHeight.value = `${Math.max(200, vh - top - sidePad - 48)}px`
+
+  nextTick(() => {
+    const p = msgsPanelRef.value
+    if (!p) return
+    const panelRect = p.getBoundingClientRect()
+    const panelH = panelRect.height
+    const overflowBottom = top + panelH + sidePad - vh
+    if (overflowBottom > 0 && rect.top >= panelH + gap + sidePad) {
+      top = Math.round(rect.top - panelH - gap)
+      msgsStyle.value.top = `${top}px`
+      notifBodyMaxHeight.value = `${Math.max(200, top - sidePad - 48)}px`
+    } else {
+      notifBodyMaxHeight.value = `${Math.max(200, vh - top - sidePad - 48)}px`
+    }
+    const caretTargetX = rect.right - left - 20
+    msgsCaretRight.value = Math.max(8, Math.min(width - 24, width - caretTargetX))
+  })
+}
+function attachMsgsPositionListeners(attach) {
+  const fn = () => positionMsgsPanel()
+  const evts = ['resize', 'scroll', 'orientationchange']
+  if (attach) evts.forEach(e => window.addEventListener(e, fn, { passive: true }))
+  else evts.forEach(e => window.removeEventListener(e, fn))
+}
+const toggleMsgs = async () => {
+  const next = !msgsOpen.value
+  msgsOpen.value = next
+  if (next) {
+    await openMsgs()
+    positionMsgsPanel()
+    attachMsgsPositionListeners(true)
+  } else {
+    attachMsgsPositionListeners(false)
+  }
+}
+onMounted(() => { if (msgsOpen.value) positionMsgsPanel() })
+onBeforeUnmount(() => { attachMsgsPositionListeners(false) })
+
 const notifBadge = computed(() => notifStore.unreadTotal || 0)
 const listAll = computed(() => (notifStore.items?.data || []).slice())
 const nNew = computed(() => listAll.value.length ? listAll.value[0] : null)
@@ -344,16 +469,27 @@ async function refreshBadge() {
   finally { refreshing = false }
 }
 let pollId = null
+let msgPollId = null
+const onFocusNotif = () => { if (auth?.token) refreshBadge() }
+const onFocusMsgs = () => { if (auth?.token) msgsStore.fetchUnread({ limitPerModule: 10 }) }
 onMounted(() => {
   if (auth?.token) refreshBadge()
-  window.addEventListener('focus', () => { if (auth?.token) refreshBadge() })
+  window.addEventListener('focus', onFocusNotif)
   pollId = window.setInterval(() => {
     if (document.hasFocus() && auth?.token) refreshBadge()
   }, 60000)
+  // lightweight preload of messages badge
+  if (auth?.token) msgsStore.fetchUnread({ limitPerModule: 10 })
+  window.addEventListener('focus', onFocusMsgs)
+  msgPollId = window.setInterval(() => {
+    if (document.hasFocus() && auth?.token) msgsStore.fetchUnread({ limitPerModule: 10 })
+  }, 90000)
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('focus', refreshBadge)
+  window.removeEventListener('focus', onFocusNotif)
   if (pollId) { window.clearInterval(pollId); pollId = null }
+  window.removeEventListener('focus', onFocusMsgs)
+  if (msgPollId) { window.clearInterval(msgPollId); msgPollId = null }
 })
 const shouldAttention = computed(() => (notifBadge.value > 0) && !notifOpen.value)
 
@@ -423,6 +559,9 @@ const toggleNotifs = async () => {
 }
 onMounted(() => { if (notifOpen.value) positionNotifPanel() })
 onBeforeUnmount(() => { attachNotifPositionListeners(false) })
+
+// attention state for messages icon
+const shouldMsgAttention = computed(() => (msgsBadge.value > 0) && !msgsOpen.value)
 </script>
 
 <style scoped>

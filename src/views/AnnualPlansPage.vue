@@ -1,6 +1,7 @@
 <!-- src/views/AnnualPlansPage.vue -->
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import LayoutAuthenticated from '@/layouts/LayoutAuthenticated.vue'
 import SectionMain from '@/components/SectionMain.vue'
@@ -75,6 +76,25 @@ const markAllReadForRow = async () => {
     try { remarksRow.value.remarks = JSON.stringify(next) } catch {}
     try { await store.updateById(remarksRow.value.id, { remarks: JSON.stringify(next) }); await fetchAll({}, true) } catch {}
 }
+
+// Deep-link to open remarks from header inbox
+const route = useRoute()
+const router = useRouter()
+const handleOpenFromQuery = async () => {
+  const t = String(route.query.open_remarks_type || '')
+  const id = Number(route.query.open_remarks_id || '')
+  if (t === 'AP' && Number.isFinite(id)) {
+    try { await store.fetchById(id) } catch {}
+    const row = store.selected
+    if (row) await openRemarks(row)
+    const next = { ...route.query }
+    delete next.open_remarks_type
+    delete next.open_remarks_id
+    router.replace({ query: next })
+  }
+}
+onMounted(handleOpenFromQuery)
+watch(() => [route.query.open_remarks_type, route.query.open_remarks_id], () => { handleOpenFromQuery() })
 const openFromCalendar = async (annualPlanId) => {
     try {
         await store.fetchById(annualPlanId)
