@@ -196,9 +196,10 @@ export const useActivityDesignStore = defineStore("activityDesign", () => {
     try {
       isLoading.value = true;
       const res = await withAction(id, () => activityDesignService.cancel(id, { remarks }));
-      upsertInList(res);
-      if (selected.value?.id === id) selected.value = res;
-      return res;
+      const normalized = { ...(res || {}), status: 'draft' };
+      upsertInList(normalized);
+      if (selected.value?.id === id) selected.value = normalized;
+      return normalized;
     } catch (err) {
       error.value =
         err?.response?.data?.message ||

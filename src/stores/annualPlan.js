@@ -196,9 +196,10 @@ export const useAnnualPlanStore = defineStore("annualPlan", () => {
     try {
       isLoading.value = true;
       const res = await withAction(id, () => annualPlanService.cancel(id, { remarks }));
-      upsertInList(res);
-      if (selected.value?.id === id) selected.value = res;
-      return res;
+      const normalized = { ...(res || {}), status: 'draft' };
+      upsertInList(normalized);
+      if (selected.value?.id === id) selected.value = normalized;
+      return normalized;
     } catch (err) {
       error.value =
         err?.response?.data?.message ||

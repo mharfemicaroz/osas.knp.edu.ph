@@ -435,7 +435,7 @@ const onCancel = async () => {
     try {
         await adStore.cancel(form.value.id, remarks || '')
         await Swal.fire('Cancelled', 'Activity Design has been cancelled.', 'success')
-        form.value.status = 'cancelled'
+        form.value.status = 'draft'
     } catch (e) {
         await Swal.fire('Error', adStore.error || 'Failed to cancel activity design.', 'error')
     }

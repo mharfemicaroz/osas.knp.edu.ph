@@ -384,7 +384,7 @@ const onCancel = async () => {
         const msg = `${displayName.value} cancelled utilization request.${remarks ? ' - ' + remarks : ''}`
         arr.push({ user_id: auth.user?.id || null, user_name: displayName.value, message: msg, datetime: new Date().toISOString() })
         const res = await urStore.cancel(form.value.id, JSON.stringify(arr))
-        form.value = { ...form.value, ...(res || {}), status: (res?.status || 'cancelled') }
+        form.value = { ...form.value, ...(res || {}), status: 'draft' }
         await Swal.fire('Cancelled', 'Utilization Request has been cancelled.', 'success')
     } catch (e) {
         await Swal.fire('Error', urStore.error || 'Failed to cancel utilization request.', 'error')
