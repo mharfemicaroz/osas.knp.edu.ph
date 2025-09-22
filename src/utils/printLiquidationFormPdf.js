@@ -499,36 +499,6 @@ async function buildLiquidationFormPdfDoc(lf) {
   }
   cursorY = doc.lastAutoTable.finalY + 10;
 
-  /* -------- REMARKS -------- */
-  autoTable(doc, {
-    startY: cursorY,
-    theme: "plain",
-    styles: { fontSize: 10 },
-    body: [
-      [
-        {
-          content: "REMARKS",
-          styles: {
-            fillColor: [66, 103, 178],
-            textColor: 255,
-            fontStyle: "bold",
-            cellPadding: 6,
-          },
-        },
-      ],
-    ],
-    margin: { left: marginX, right: marginX },
-  });
-  cursorY = doc.lastAutoTable.finalY;
-  autoTable(doc, {
-    startY: cursorY,
-    theme: "grid",
-    styles: { fontSize: 9, cellPadding: 8 },
-    body: [[lf.remarks && String(lf.remarks).trim() ? lf.remarks : "—"]],
-    margin: { left: marginX, right: marginX },
-  });
-  cursorY = doc.lastAutoTable.finalY + 10;
-
   /* -------- SIGNATORIES -------- */
   // If not enough space, move the entire signatories block to next page
   {
@@ -581,14 +551,15 @@ async function buildLiquidationFormPdfDoc(lf) {
       textColor: 20,
       fontStyle: "bold",
     },
-    showHead: 'firstPage',
-    rowPageBreak: 'avoid',
+    showHead: "firstPage",
+    rowPageBreak: "avoid",
     head: [["PREPARED BY:", "NOTED BY:", "RECOMMENDING APPROVAL:"]],
     body: [
       [preparer || " ", noted || " ", approver || " "],
       [
         {
-          content: "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA\nActing College President",
+          content:
+            "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA\nActing College President",
           colSpan: 3,
           styles: {
             halign: "center",

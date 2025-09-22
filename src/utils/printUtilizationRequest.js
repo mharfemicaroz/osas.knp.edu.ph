@@ -500,43 +500,42 @@ async function buildUtilizationRequestPdfDoc(u) {
   }
   cursorY = doc.lastAutoTable.finalY + 10;
 
-  /* -------- DETAILS / REMARKS -------- */
-  const longSections = [
-    ["UTILIZATION DETAILS", u.utilization_details],
-    ["REMARKS", u.remarks],
-  ];
-
-  for (const [title, content] of longSections) {
-    autoTable(doc, {
-      startY: cursorY,
-      theme: "plain",
-      styles: { fontSize: 10 },
-      body: [
-        [
-          {
-            content: title,
-            styles: {
-              fillColor: [66, 103, 178],
-              textColor: 255,
-              fontStyle: "bold",
-              cellPadding: 6,
-            },
+  /* -------- DETAILS -------- */
+  autoTable(doc, {
+    startY: cursorY,
+    theme: "plain",
+    styles: { fontSize: 10 },
+    body: [
+      [
+        {
+          content: "UTILIZATION DETAILS",
+          styles: {
+            fillColor: [66, 103, 178],
+            textColor: 255,
+            fontStyle: "bold",
+            cellPadding: 6,
           },
-        ],
+        },
       ],
-      margin: { left: marginX, right: marginX },
-    });
-    cursorY = doc.lastAutoTable.finalY;
+    ],
+    margin: { left: marginX, right: marginX },
+  });
+  cursorY = doc.lastAutoTable.finalY;
 
-    autoTable(doc, {
-      startY: cursorY,
-      theme: "grid",
-      styles: { fontSize: 9, cellPadding: 8 },
-      body: [[content && String(content).trim() ? content : "—"]],
-      margin: { left: marginX, right: marginX },
-    });
-    cursorY = doc.lastAutoTable.finalY + 10;
-  }
+  autoTable(doc, {
+    startY: cursorY,
+    theme: "grid",
+    styles: { fontSize: 9, cellPadding: 8 },
+    body: [
+      [
+        u.utilization_details && String(u.utilization_details).trim()
+          ? u.utilization_details
+          : "—",
+      ],
+    ],
+    margin: { left: marginX, right: marginX },
+  });
+  cursorY = doc.lastAutoTable.finalY + 10;
 
   /* -------- APPROVAL -------- */
   // If not enough space, move the entire approval block to next page
@@ -590,14 +589,15 @@ async function buildUtilizationRequestPdfDoc(u) {
       textColor: 20,
       fontStyle: "bold",
     },
-    showHead: 'firstPage',
-    rowPageBreak: 'avoid',
+    showHead: "firstPage",
+    rowPageBreak: "avoid",
     head: [["PREPARED BY:", "NOTED BY:", "RECOMMENDING APPROVAL:"]],
     body: [
       [preparer || " ", noted || " ", approver || " "],
       [
         {
-          content: "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA\nActing College President",
+          content:
+            "APPROVED BY:\n\n\nDR. MARY ANN R. ARAULA\nActing College President",
           colSpan: 3,
           styles: {
             halign: "center",
