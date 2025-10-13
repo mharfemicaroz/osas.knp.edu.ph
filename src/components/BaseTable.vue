@@ -216,8 +216,6 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineProps, defineEmits } from 'vue'
-import { useLoading } from 'vue-loading-overlay'
-import 'vue-loading-overlay/dist/css/index.css'
 
 import TableCheckboxCell from '@/components/commons/TableCheckboxCell.vue'
 import BaseButton from '@/components/commons/BaseButton.vue'
@@ -257,37 +255,7 @@ const emit = defineEmits(['query-change', 'selected', 'sort', 'filter', 'edit'])
 /* Refs */
 const tableContainer = ref(null)
 
-/* Loading overlay */
-const $loading = useLoading()
-const loaderInstance = ref(null)
-watch(
-    () => props.loading,
-    (newVal) => {
-        if (newVal) {
-            if (!loaderInstance.value) {
-                loaderInstance.value = $loading.show({
-                    container: tableContainer.value,
-                    canCancel: false,
-                    isFullPage: false,
-                    color: '#3b82f6',
-                    opacity: 0.8
-                })
-            }
-        } else {
-            if (loaderInstance.value) {
-                loaderInstance.value.hide()
-                loaderInstance.value = null
-            }
-        }
-    },
-    { immediate: true }
-)
-onBeforeUnmount(() => {
-    if (loaderInstance.value) {
-        loaderInstance.value.hide()
-        loaderInstance.value = null
-    }
-})
+/* Removed component-level loading overlay; global loader handles requests. */
 
 /* State */
 const internalPage = ref(props.data.currentPage || 1)

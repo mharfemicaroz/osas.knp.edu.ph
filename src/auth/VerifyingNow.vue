@@ -10,10 +10,7 @@
             </div>
         </div>
 
-        <!-- Loading overlay -->
-        <div v-if="auth.isLoading" class="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-md">
-            <div class="loader"></div>
-        </div>
+        <!-- Removed page-specific loading overlay; use global loader -->
 
         <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
             <div class="w-full max-w-md">
@@ -150,18 +147,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.loader {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid var(--accent);
-    border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+/* Loader styles removed */
 </style>

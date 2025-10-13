@@ -9,8 +9,7 @@ import {
     CategoryScale,
     Tooltip
 } from 'chart.js'
-import { useLoading } from 'vue-loading-overlay'
-import 'vue-loading-overlay/dist/css/index.css'
+// Removed local loading overlay; rely on global loader.
 
 // Define props including a loading prop.
 const props = defineProps({
@@ -25,45 +24,12 @@ const props = defineProps({
 })
 
 const root = ref(null)
-// Create a container ref for the loading overlay.
 const chartContainer = ref(null)
 let chart
 
 Chart.register(LineElement, PointElement, LineController, LinearScale, CategoryScale, Tooltip)
 
-// Setup loading overlay.
-const $loading = useLoading()
-const loaderInstance = ref(null)
-
-watch(
-    () => props.loading,
-    (newVal) => {
-        if (newVal) {
-            if (!loaderInstance.value) {
-                loaderInstance.value = $loading.show({
-                    container: chartContainer.value,
-                    canCancel: false,
-                    isFullPage: false,
-                    color: '#3b82f6',
-                    opacity: 0.8
-                })
-            }
-        } else {
-            if (loaderInstance.value) {
-                loaderInstance.value.hide()
-                loaderInstance.value = null
-            }
-        }
-    },
-    { immediate: true }
-)
-
-onBeforeUnmount(() => {
-    if (loaderInstance.value) {
-        loaderInstance.value.hide()
-        loaderInstance.value = null
-    }
-})
+onBeforeUnmount(() => {})
 
 onMounted(() => {
     chart = new Chart(root.value, {
