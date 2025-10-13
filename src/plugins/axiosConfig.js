@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../stores/auth";
+import { useLoadingStore } from "@/stores/loading";
 
 // 🔹 Define API and Frontend origins
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -12,20 +13,33 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore();
+    const loadingStore = useLoadingStore();
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`;
     }
+    // global loader start for any request
+    try { loadingStore.start(); } catch {}
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    try { useLoadingStore().stop(); } catch {}
+    return Promise.reject(error);
+  }
 );
 
 // 🔹 Response Interceptor: Handle Token Expiry & Refresh
 axiosInstance.interceptors.response.use(
-  (response) => response, // Pass valid responses
+  (response) => {
+    try { useLoadingStore().stop(); } catch {}
+    return response; // Pass valid responses
+  },
   async (error) => {
     const authStore = useAuthStore();
-    const originalRequest = error.config;
+    const loadingStore = useLoadingStore();
+    const originalRequest = error.config || {};
+
+    // Stop for this failed response
+    try { loadingStore.stop(); } catch {}
 
     // If 401 (Unauthorized), attempt to refresh token
     if (
@@ -36,12 +50,16 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true; // Prevent infinite loops
 
       try {
+        // Start loader for refresh request
+        try { loadingStore.start(); } catch {}
         const refreshResponse = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
           {
             refreshToken: authStore.refreshToken, // Send current refresh token
           }
         );
+        // Stop loader for refresh request
+        try { loadingStore.stop(); } catch {}
 
         // Update both the access token and refresh token in the auth store
         authStore.token = refreshResponse.data.accessToken;
@@ -55,6 +73,7 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${authStore.token}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
+        try { loadingStore.stop(); } catch {}
         console.error("Refresh token expired or invalid:", refreshError);
         authStore.logout(); // Log the user out if refresh fails
       }
