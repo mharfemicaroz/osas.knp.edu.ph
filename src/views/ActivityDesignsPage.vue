@@ -88,6 +88,35 @@ const lastQuery = ref({
     impl_to: '',
 })
 
+const showAdvanced = ref(false)
+
+const hasAdvancedFilters = computed(() => {
+    const q = lastQuery.value
+    return Boolean(
+        q.club_id ||
+        q.filed_by_user_id ||
+        q.date_filed_from ||
+        q.date_filed_to ||
+        q.impl_from ||
+        q.impl_to
+    )
+})
+
+const activeFilterCount = computed(() => {
+    const q = lastQuery.value
+    let count = 0
+    if (q.q) count += 1
+    if (q.status) count += 1
+    if (q.nature_of_activity) count += 1
+    if (q.school_year) count += 1
+    if (q.semester) count += 1
+    if (q.club_id) count += 1
+    if (q.filed_by_user_id) count += 1
+    if (q.date_filed_from || q.date_filed_to) count += 1
+    if (q.impl_from || q.impl_to) count += 1
+    return count
+})
+
 const dateFiledRange = computed({
     get: () => {
         const { date_filed_from: s, date_filed_to: e } = lastQuery.value
@@ -156,6 +185,10 @@ onMounted(async () => {
     ])
 })
 
+watch(hasAdvancedFilters, (next) => {
+    if (next) showAdvanced.value = true
+}, { immediate: true })
+
 /* ---------- CLUB → FILED-BY DEPENDENCY ---------- */
 const clubMembers = ref([])
 watch(
@@ -220,6 +253,7 @@ const mainColumns = [
     { key: 'date_of_implementation', label: 'Implementation', sortable: true, width: 140, formatter: v => v ? new Date(v).toLocaleDateString() : '—' },
     // { key: 'nature_of_activity', label: 'Nature', sortable: true, width: 150 },
     { key: 'status', label: 'Status', sortable: true, width: 120 },
+    { key: 'actions', label: 'Actions', isAction: true, stickyRight: true },
 ]
 
 const handleQueryChange = async (q) => {
@@ -574,6 +608,7 @@ const resetFilters = async () => {
         impl_to: '',
         page: 1,
     })
+    showAdvanced.value = false
 }
 </script>
 
@@ -592,77 +627,110 @@ const resetFilters = async () => {
             </SectionTitleLineWithButton>
 
             <!-- Filters -->
-            <div class="p-2 mb-4 rounded-xl border bg-white/60">
-                <div class="flex items-center gap-2 mb-2 text-gray-700">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24">
-                        <path :d="mdiFilter" />
-                    </svg>
-                    <span class="font-medium text-sm">Filters</span>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
-                    <input v-model="lastQuery.q" placeholder="Search by ref, activity, venue, office…"
-                        class="border rounded px-2 py-2 md:col-span-2" @keyup.enter="fetchAll({ page: 1 })" />
-
-                    <select v-model="lastQuery.status" class="border rounded px-2 py-2">
-                        <option value="">All status</option>
-                        <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
-                    </select>
-
-                    <select v-model="lastQuery.nature_of_activity" class="border rounded px-2 py-2">
-                        <option value="">All natures</option>
-                        <option v-for="n in NATURES" :key="n" :value="n">{{ n }}</option>
-                    </select>
-
-                    <select v-model="lastQuery.school_year" class="border rounded px-2 py-2 md:col-span-1">
-                        <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
-                    </select>
-
-                    <select v-model="lastQuery.semester" class="border rounded px-2 py-2 md:col-span-1">
-                        <option disabled value="">Select semester…</option>
-                        <option v-for="s in SEMESTERS" :key="s" :value="s">{{ s }}</option>
-                    </select>
-
-                    <!-- Club filter -->
-                    <select v-model="lastQuery.club_id" class="border rounded px-2 py-2 md:col-span-2">
-                        <option v-if="authStore.user.role === 'admin'" value="">All clubs</option>
-                        <option v-for="c in (clubStore.clubs.data || [])" :key="c.id" :value="c.id">{{ c.name }}
-                        </option>
-                    </select>
-
-                    <!-- Filed-by filter (dependent on club) -->
-                    <select v-model="lastQuery.filed_by_user_id" class="border rounded px-2 py-2 md:col-span-2">
-                        <option value="">
-                            {{ lastQuery.club_id ? 'Filed by (club members)' : 'Filed by (any)' }}
-                        </option>
-                        <option v-for="u in filedByOptions" :key="u.id" :value="u.id">
-                            {{ u.first_name }} {{ u.last_name }} (@{{ u.username }})
-                        </option>
-                    </select>
-
-                    <!-- Filed date range -->
-                    <div class="md:col-span-1">
-                        <Datepicker v-model="dateFiledRange" v-bind="dpRangeCommon" placeholder="Filed date range" />
+            <div class="p-3 md:p-4 mb-4 rounded-xl border bg-white/70 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 text-gray-700">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24">
+                            <path :d="mdiFilter" />
+                        </svg>
+                        <span class="font-semibold text-sm">Filters</span>
+                        <span v-if="activeFilterCount" class="text-xs text-gray-500">({{ activeFilterCount }} active)</span>
+                        <span v-else class="text-xs text-gray-400">(none)</span>
                     </div>
-
-                    <!-- Implementation date range -->
-                    <div class="md:col-span-1">
-                        <Datepicker v-model="implRange" v-bind="dpRangeCommon"
-                            placeholder="Implementation date range" />
-                    </div>
-
-                    <div class="flex items-center gap-2 md:col-span-2">
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded text-xs" @click="fetchAll({ page: 1 })">
-                            Apply
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 text-xs rounded border bg-white hover:bg-gray-50"
+                            @click="showAdvanced = !showAdvanced">
+                            {{ showAdvanced ? 'Hide advanced' : 'Advanced' }}
                         </button>
-                        <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="resetFilters">
+                        <button class="px-3 py-1.5 text-xs rounded bg-gray-100 hover:bg-gray-200" @click="resetFilters">
                             Reset
                         </button>
+                        <button class="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                            @click="fetchAll({ page: 1 })">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-3 text-sm">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-gray-500 mb-1">Search</label>
+                        <input v-model="lastQuery.q" placeholder="Ref code, activity, venue, office"
+                            class="border rounded px-2 py-2 w-full" @keyup.enter="fetchAll({ page: 1 })" />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Status</label>
+                        <select v-model="lastQuery.status" class="border rounded px-2 py-2 w-full">
+                            <option value="">All status</option>
+                            <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Nature</label>
+                        <select v-model="lastQuery.nature_of_activity" class="border rounded px-2 py-2 w-full">
+                            <option value="">All natures</option>
+                            <option v-for="n in NATURES" :key="n" :value="n">{{ n }}</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">School year</label>
+                        <select v-model="lastQuery.school_year" class="border rounded px-2 py-2 w-full">
+                            <option value="">All school years</option>
+                            <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Semester</label>
+                        <select v-model="lastQuery.semester" class="border rounded px-2 py-2 w-full">
+                            <option value="">All semesters</option>
+                            <option v-for="s in SEMESTERS" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div v-show="showAdvanced" class="mt-3 grid grid-cols-1 md:grid-cols-6 gap-3 text-sm">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-gray-500 mb-1">Club</label>
+                        <select v-model="lastQuery.club_id" class="border rounded px-2 py-2 w-full">
+                            <option v-if="authStore.user.role === 'admin'" value="">All clubs</option>
+                            <option v-for="c in (clubStore.clubs.data || [])" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-gray-500 mb-1">Filed by</label>
+                        <select v-model="lastQuery.filed_by_user_id" class="border rounded px-2 py-2 w-full">
+                            <option value="">
+                                {{ lastQuery.club_id ? 'Filed by (club members)' : 'Filed by (any)' }}
+                            </option>
+                            <option v-for="u in filedByOptions" :key="u.id" :value="u.id">
+                                {{ u.first_name }} {{ u.last_name }} (@{{ u.username }})
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-1">
+                        <label class="block text-xs text-gray-500 mb-1">Filed date</label>
+                        <Datepicker v-model="dateFiledRange" v-bind="dpRangeCommon" placeholder="Date range" />
+                    </div>
+
+                    <div class="md:col-span-1">
+                        <label class="block text-xs text-gray-500 mb-1">Implementation</label>
+                        <Datepicker v-model="implRange" v-bind="dpRangeCommon" placeholder="Date range" />
                     </div>
                 </div>
             </div>
 
-            <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading"
+            <div class="flex items-center justify-between mb-2 text-xs text-gray-600">
+                <div>Showing <span class="font-medium text-gray-800">{{ dataWrap.data.length }}</span> of {{ dataWrap.total }} activities</div>
+                <div v-if="activeFilterCount" class="text-gray-500">Filtered view</div>
+            </div>
+
+            <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading" :show-action="false"
                 @query-change="handleQueryChange">
                 <!-- Annual Plan / Item column -->
                 <template #cell-annual_plan_item="{ row }">
