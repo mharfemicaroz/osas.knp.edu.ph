@@ -23,7 +23,7 @@ import { useClubScope } from '@/utils/clubScope'
 import axiosInstance from '@/plugins/axiosConfig'
 
 import {
-    mdiTableBorder, mdiAlertCircle, mdiPlus, mdiFilter, mdiRefresh, mdiMagnify, mdiCalendarClock,
+    mdiTableBorder, mdiAlertCircle, mdiPlus, mdiFilter, mdiRefresh, mdiCalendarClock,
 } from '@mdi/js'
 
 const store = useAnnualPlanStore()
@@ -134,6 +134,18 @@ const lastQuery = ref({
 })
 const { isClub, activeClubId, withClub } = useClubScope()
 
+const showAdvanced = ref(false)
+const hasAdvancedFilters = computed(() => Boolean(lastQuery.value.club_id))
+const activeFilterCount = computed(() => {
+    const q = lastQuery.value
+    let count = 0
+    if (q.q) count += 1
+    if (q.status) count += 1
+    if (q.school_year) count += 1
+    if (q.club_id) count += 1
+    return count
+})
+
 const fetchAll = async (patch = {}, force = true) => {
     lastQuery.value = { ...lastQuery.value, ...patch }
     const params = withClub({ ...lastQuery.value })
@@ -142,7 +154,23 @@ const fetchAll = async (patch = {}, force = true) => {
         })
     await store.fetchAll(params, force)
 }
+const resetFilters = async () => {
+    await fetchAll({
+        q: '',
+        status: '',
+        school_year: '',
+        club_id: '',
+        filed_by_user_id: '',
+        approver_user_id: '',
+        page: 1,
+    })
+    showAdvanced.value = false
+}
 onMounted(async () => { await fetchAll({ page: 1, limit: 10, club_id: isClub ? activeClubId : '' }) })
+
+watch(hasAdvancedFilters, (next) => {
+    if (next) showAdvanced.value = true
+}, { immediate: true })
 
 const dataWrap = computed(() => ({
     total: store.items.total || 0,
@@ -182,6 +210,7 @@ const mainColumns = [
     { key: 'total_budget', label: 'Total Budget', sortable: true, width: 140 },
     { key: 'status', label: 'Status', sortable: true, width: 110 },
     { key: 'created_at', label: 'Created', sortable: true, width: 170 },
+    { key: 'actions', label: 'Actions', isAction: true, stickyRight: true },
 ]
 
 const handleQueryChange = async (q) => { await fetchAll(q) }
@@ -347,54 +376,72 @@ const openAttachments = async (row) => {
             </SectionTitleLineWithButton>
 
             <!-- Filters -->
-            <div class="p-3 mb-4 rounded-xl border bg-white/60">
-                <div class="flex items-center gap-2 mb-2 text-gray-700">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24">
-                        <path :d="mdiFilter" />
-                    </svg>
-                    <span class="font-medium text-sm">Filters</span>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-2 text-sm">
-                    <div class="md:col-span-2 flex">
-                        <input v-model="lastQuery.q" placeholder="Search by ref, school year, remarks…"
-                            class="border rounded-s px-2 py-2 flex-1" @keyup.enter="fetchAll({ page: 1 })" />
-                        <button class="px-3 border border-l-0 rounded-e bg-gray-50" title="Search"
+            <div class="p-3 md:p-4 mb-4 rounded-xl border bg-white/70 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 text-gray-700">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24">
+                            <path :d="mdiFilter" />
+                        </svg>
+                        <span class="font-semibold text-sm">Filters</span>
+                        <span v-if="activeFilterCount" class="text-xs text-gray-500">({{ activeFilterCount }} active)</span>
+                        <span v-else class="text-xs text-gray-400">(none)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 text-xs rounded border bg-white hover:bg-gray-50"
+                            @click="showAdvanced = !showAdvanced">
+                            {{ showAdvanced ? 'Hide advanced' : 'Advanced' }}
+                        </button>
+                        <button class="px-3 py-1.5 text-xs rounded bg-gray-100 hover:bg-gray-200" @click="resetFilters">
+                            Reset
+                        </button>
+                        <button class="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                             @click="fetchAll({ page: 1 })">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24">
-                                <path :d="mdiMagnify" />
-                            </svg>
+                            Apply
                         </button>
                     </div>
+                </div>
 
-                    <select v-model="lastQuery.status" class="border rounded px-2 py-2">
-                        <option value="">All status</option>
-                        <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
-                    </select>
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-3 text-sm">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-gray-500 mb-1">Search</label>
+                        <input v-model="lastQuery.q" placeholder="Ref code, club, notes"
+                            class="border rounded px-2 py-2 w-full" @keyup.enter="fetchAll({ page: 1 })" />
+                    </div>
 
-                    <select v-model="lastQuery.school_year" class="border rounded px-2 py-2" :disabled="readOnly">
-                        <option value="">Select school year…</option>
-                        <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
-                    </select>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Status</label>
+                        <select v-model="lastQuery.status" class="border rounded px-2 py-2 w-full">
+                            <option value="">All status</option>
+                            <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                    </div>
 
-                    <select v-model="lastQuery.club_id" class="border rounded px-2 py-2">
-                        <option value="">Any club</option>
-                        <option v-for="c in clubs" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">School year</label>
+                        <select v-model="lastQuery.school_year" class="border rounded px-2 py-2 w-full">
+                            <option value="">All school years</option>
+                            <option v-for="sy in schoolYearOptions" :key="sy" :value="sy">{{ sy }}</option>
+                        </select>
+                    </div>
+                </div>
 
-                    <div class="flex items-center gap-2 md:col-span-2">
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded text-xs" @click="fetchAll({ page: 1 })">
-                            Apply Filters
-                        </button>
-                        <button class="px-4 py-2 bg-gray-200 rounded text-xs" @click="() => {
-                            lastQuery.value = { page: 1, limit: 10, sort: 'created_at', order: 'DESC', q: '', status: '', school_year: '', club_id: '' }
-                            fetchAll({ page: 1 }, true)
-                        }">Reset</button>
+                <div v-show="showAdvanced" class="mt-3 grid grid-cols-1 md:grid-cols-6 gap-3 text-sm">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs text-gray-500 mb-1">Club</label>
+                        <select v-model="lastQuery.club_id" class="border rounded px-2 py-2 w-full">
+                            <option value="">Any club</option>
+                            <option v-for="c in clubs" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
-            <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading"
+            <div class="flex items-center justify-between mb-2 text-xs text-gray-600">
+                <div>Showing <span class="font-medium text-gray-800">{{ dataWrap.data.length }}</span> of {{ dataWrap.total }} plans</div>
+                <div v-if="activeFilterCount" class="text-gray-500">Filtered view</div>
+            </div>
+
+            <BaseTable :columns="mainColumns" :data="dataWrap" :loading="store.isLoading" :show-action="false"
                 @query-change="handleQueryChange">
                 <template #cell-total_budget="{ value }">
                     <span class="font-medium">{{ currency(value) }}</span>

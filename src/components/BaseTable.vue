@@ -23,7 +23,8 @@
                         <!-- Table columns -->
                         <th v-for="col in columns" :key="col.key" :class="[
                             'px-4 py-2 text-left',
-                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words',
+                            col.stickyRight ? 'sticky-right' : ''
                         ]">
                             <!-- Dynamic header slot -->
                             <slot :name="`header-${col.key}`" :column="col"
@@ -76,7 +77,7 @@
 
                     <!-- Data rows -->
                     <tr v-for="item in safeData.data" :key="item.id ?? item._key ?? JSON.stringify(item)"
-                        class="border-t text-sm hover:bg-gray-50">
+                        class="border-t text-sm hover:bg-gray-50 group">
                         <!-- Checkbox cell -->
                         <td v-if="checkable" class="p-2 w-10 text-center" data-label="Select">
                             <TableCheckboxCell :modelValue="selectedRows.has(item.id)"
@@ -86,7 +87,8 @@
                         <!-- Data cells -->
                         <td v-for="col in columns" :key="col.key" :class="[
                             'px-4 py-2 align-top',
-                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words',
+                            col.stickyRight ? 'sticky-right' : ''
                         ]" :data-label="col.label">
                             <!-- Dynamic cell slot per column -->
                             <slot :name="`cell-${col.key}`" :row="item" :value="item[col.key]" :column="col">
@@ -167,7 +169,8 @@
                         <td v-if="checkable" class="p-2 w-10"></td>
                         <td v-for="col in columns" :key="col.key" :class="[
                             'px-4 py-2',
-                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words'
+                            (col.key === 'actions' || col.isAction) ? 'whitespace-nowrap' : 'whitespace-normal break-words',
+                            col.stickyRight ? 'sticky-right' : ''
                         ]" :data-label="col.label">
                             <slot :name="`aggregate-${col.key}`" :value="aggregates[col.key]" :column="col">
                                 <span v-if="col.aggregate">{{ aggregates[col.key] }}</span>
@@ -489,6 +492,24 @@ const hasAggregates = computed(() => props.columns.some((col) => col.aggregate))
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+.sticky-right {
+    position: sticky;
+    right: 0;
+    background: #ffffff;
+}
+
+thead th.sticky-right {
+    z-index: 3;
+}
+
+tbody td.sticky-right {
+    z-index: 1;
+}
+
+tbody tr:hover td.sticky-right {
+    background: #f9fafb;
 }
 
 /* Mobile responsive cards */
