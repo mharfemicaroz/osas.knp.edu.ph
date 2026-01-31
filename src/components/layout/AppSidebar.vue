@@ -1,5 +1,5 @@
 <template>
-    <aside class="w-64 bg-secondary text-white p-4 hidden md:block">
+    <aside class="w-64 bg-secondary text-white p-4 hidden md:block md:sticky md:top-16 md:self-start md:max-h-[calc(100vh-4rem)] md:overflow-y-auto">
         <nav>
             <h2 class="text-lg font-bold mb-4 text-yellow-300">Navigation</h2>
 

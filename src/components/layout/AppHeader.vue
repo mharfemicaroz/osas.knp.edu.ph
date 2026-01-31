@@ -204,6 +204,30 @@
             <i class="mdi mdi-chevron-right text-gray-400"></i>
           </button>
 
+          <button class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50" @click="openAccountSettings">
+            <div
+              class="h-8 w-8 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center ring-1 ring-indigo-100">
+              <i class="mdi mdi-account-cog text-lg"></i>
+            </div>
+            <div class="min-w-0 flex-1 text-left">
+              <div class="text-sm font-medium truncate">Account Settings</div>
+              <div class="text-xs text-gray-500 truncate">Profile details and bio</div>
+            </div>
+            <i class="mdi mdi-chevron-right text-gray-400"></i>
+          </button>
+
+          <button class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50" @click="openSecuritySettings">
+            <div
+              class="h-8 w-8 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center ring-1 ring-emerald-100">
+              <i class="mdi mdi-shield-key-outline text-lg"></i>
+            </div>
+            <div class="min-w-0 flex-1 text-left">
+              <div class="text-sm font-medium truncate">Security Settings</div>
+              <div class="text-xs text-gray-500 truncate">Password and account info</div>
+            </div>
+            <i class="mdi mdi-chevron-right text-gray-400"></i>
+          </button>
+
           <div class="my-1 border-t border-gray-200"></div>
 
           <div>
@@ -257,6 +281,8 @@
   <ClubsListModal v-model="showClubs" :clubs="clubs" :loading="loadingClubs" @select="goToClub" />
   <NotificationsListModal v-model="showNotifs" />
   <MessagesInboxModal v-model="showMsgs" />
+  <AccountSettingsModal v-model="showAccountSettings" />
+  <SecuritySettingsModal v-model="showSecuritySettings" />
 </template>
 
 <script setup>
@@ -270,6 +296,8 @@ import NotificationsListModal from '@/components/notifications/NotificationsList
 import { useNotificationStore } from '@/stores/notification'
 import { useRemarksInboxStore } from '@/stores/remarksInbox'
 import MessagesInboxModal from '@/components/remarks/MessagesInboxModal.vue'
+import AccountSettingsModal from '@/components/profile/AccountSettingsModal.vue'
+import SecuritySettingsModal from '@/components/profile/SecuritySettingsModal.vue'
 defineOptions({ name: "AppHeader" });
 
 const props = defineProps({
@@ -307,6 +335,8 @@ const logoUrl = (v) => mediaUrl(v)
 const isOpen = ref(false)
 const notifOpen = ref(false)
 const showClubs = ref(false)
+const showAccountSettings = ref(false)
+const showSecuritySettings = ref(false)
 const loadingClubs = ref(false)
 const clubs = computed(() => Array.isArray(userStore.selectedUserClubs) ? userStore.selectedUserClubs : [])
 const hasClubs = computed(() => (clubs.value?.length || 0) > 0)
@@ -336,6 +366,8 @@ const toggleDropdown = () => {
   }
 }
 const openClubsModal = () => { isOpen.value = false; showClubs.value = true }
+const openAccountSettings = () => { isOpen.value = false; showAccountSettings.value = true }
+const openSecuritySettings = () => { isOpen.value = false; showSecuritySettings.value = true }
 
 const goToClub = (club) => {
   const id = typeof club === 'object' ? club?.id : club

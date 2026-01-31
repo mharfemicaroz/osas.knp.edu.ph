@@ -11,6 +11,13 @@ function mapUser(u) {
   // alias
   mapped.avatar = u.avatar ?? null;
   mapped.cover = u.cover ?? null;
+  if (typeof mapped.metadata === "string") {
+    try {
+      mapped.metadata = JSON.parse(mapped.metadata);
+    } catch {
+      mapped.metadata = null;
+    }
+  }
   return mapped;
 }
 

@@ -63,7 +63,7 @@
 
                     <div class="px-6 sm:px-7 pb-6">
                         <div class="flex items-center justify-between text-[11px] text-gray-500">
-                            <span>OSAS Kiosk v1.0</span>
+                            <span>OSAS Kiosk v2.0</span>
                             <span>© {{ new Date().getFullYear() }} Student Services</span>
                         </div>
                     </div>
