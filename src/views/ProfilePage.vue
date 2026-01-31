@@ -192,6 +192,7 @@ const shareModalOpen = ref(false)
 const shareDraft = ref('')
 const shareTargetPost = ref(null)
 const shareSubmitting = ref(false)
+const mediaModalOpen = ref(false)
 
 /* Helpers */
 const fullName = computed(() => {
@@ -405,6 +406,9 @@ const commentPanelPost = computed(() => {
     }
     return null
 })
+const isMediaCommentModal = computed(() =>
+    mediaModalOpen.value && !!commentPanelPost.value?.media?.length
+)
 const commentPanelThreads = computed(() => commentThreadsForPost(commentPanelPost.value))
 
 const openReactionPanel = (post, filter = 'all') => {
@@ -457,13 +461,24 @@ const openCommentPanel = (post) => {
     commentPanelPostId.value = post?.id || null
     activeReply.value = null
     expandedReplies.value = {}
+    mediaModalOpen.value = false
 }
 
 const closeCommentPanel = () => {
     commentPanelPostId.value = null
     activeReply.value = null
     expandedReplies.value = {}
+    mediaModalOpen.value = false
 }
+
+const openMediaModal = (post) => {
+    if (!post?.id || !post.media || !post.media.length) return
+    commentPanelPostId.value = post.id
+    mediaModalOpen.value = true
+    activeReply.value = null
+    expandedReplies.value = {}
+}
+
 
 const openSharedPost = async (shared) => {
     const postId = shared?.id
@@ -1257,7 +1272,8 @@ const openClub = (clubId) => {
                                                     </div>
                                                     <div v-if="post.sharedPost.post_type === 'event' && post.sharedPost.event"
                                                         class="rounded-lg border bg-indigo-50/70 px-3 py-2 text-[11px] text-gray-700">
-                                                        <div class="text-[10px] uppercase tracking-wide text-indigo-500">
+                                                        <div
+                                                            class="text-[10px] uppercase tracking-wide text-indigo-500">
                                                             Event</div>
                                                         <div class="mt-1 text-xs font-semibold text-gray-900">
                                                             {{ post.sharedPost.event.title || 'Campus Event' }}
@@ -1308,8 +1324,10 @@ const openClub = (clubId) => {
 
                                         <div v-if="post.media && post.media.length"
                                             class="overflow-hidden rounded-xl border bg-gray-50">
-                                            <img :src="post.media[0].url" alt="post media"
-                                                class="w-full max-h-[420px] object-cover" />
+                                            <button type="button" class="block w-full" @click="openMediaModal(post)">
+                                                <img :src="post.media[0].url" alt="post media"
+                                                    class="w-full max-h-[420px] object-cover" />
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1518,436 +1536,500 @@ const openClub = (clubId) => {
                     </div>
                 </div>
             </div>
-            <div v-if="commentPanelPost" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-                @click.self="closeCommentPanel">
-                <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl flex flex-col max-h-[85vh]">
-                    <div class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
-                        <div class="text-sm font-semibold text-gray-800">Comments</div>
-                        <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeCommentPanel">
-                            <i class="mdi mdi-close"></i>
-                        </button>
-                    </div>
-                    <div class="px-4 sm:px-6 py-4 border-b">
-                        <div class="flex items-start gap-3">
-                            <div
-                                class="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
-                                <img v-if="commentPanelPost.authorAvatar" :src="commentPanelPost.authorAvatar"
-                                    alt="avatar" class="h-full w-full object-cover" />
-                                <span v-else class="text-xs font-semibold text-gray-600">{{
-                                    initials(commentPanelPost.authorName)
-                                }}</span>
+            <div v-if="commentPanelPost" class="fixed inset-0 z-50 flex items-center justify-center px-4"
+                :class="isMediaCommentModal ? 'bg-black/60' : 'bg-black/40'" @click.self="closeCommentPanel">
+                <div class="w-full rounded-2xl bg-white shadow-xl overflow-hidden"
+                    :class="isMediaCommentModal ? 'max-w-6xl h-[90vh]' : 'max-w-2xl max-h-[85vh]'">
+                    <div class="flex flex-col h-full">
+                        <div class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
+                            <div class="text-sm font-semibold text-gray-800">Comments</div>
+                            <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeCommentPanel">
+                                <i class="mdi mdi-close"></i>
+                            </button>
+                        </div>
+                        <div class="flex flex-1 min-h-0">
+                            <div v-if="isMediaCommentModal"
+                                class="hidden md:flex md:w-3/5 bg-black items-center justify-center">
+                                <img :src="commentPanelPost.media[0].url" alt="post media"
+                                    class="max-h-full w-full object-contain" />
                             </div>
-                            <div class="flex-1">
-                                <div class="text-sm font-semibold text-gray-900">{{ commentPanelPost.authorName }}</div>
-                                <div class="text-xs text-gray-500">{{ commentPanelPost.handle }} | {{
-                                    commentPanelPost.time }}</div>
-                                <div v-if="commentPanelPost.text" class="mt-2 text-sm text-gray-800">
-                                    {{ commentPanelPost.text }}
-                                </div>
-                                <div v-if="commentPanelPost.sharedPost" class="mt-3 rounded-xl border bg-gray-50">
-                                    <button type="button" class="w-full text-left hover:bg-gray-50/80 transition"
-                                        @click="openSharedPost(commentPanelPost.sharedPost)">
-                                        <div class="flex items-start gap-3 border-b px-4 py-3">
-                                            <div
-                                                class="h-8 w-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
-                                                <img v-if="commentPanelPost.sharedPost.authorAvatar"
-                                                    :src="commentPanelPost.sharedPost.authorAvatar" alt="avatar"
-                                                    class="h-full w-full object-cover" />
-                                                <span v-else>{{ initials(commentPanelPost.sharedPost.authorName) }}</span>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <div class="text-xs font-semibold text-gray-900 truncate">
-                                                    {{ commentPanelPost.sharedPost.authorName }}
-                                                </div>
-                                                <div class="text-[11px] text-gray-500">
-                                                    {{ commentPanelPost.sharedPost.handle }} | {{
-                                                        commentPanelPost.sharedPost.time }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="px-4 py-3 space-y-2 text-xs text-gray-700">
-                                            <p v-if="commentPanelPost.sharedPost.text" class="text-sm text-gray-800">
-                                                {{ commentPanelPost.sharedPost.text }}
-                                            </p>
-                                            <div v-if="commentPanelPost.sharedPost.post_type === 'feeling' && commentPanelPost.sharedPost.feeling"
-                                                class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11px] text-amber-700">
-                                                <i class="mdi mdi-emoticon-outline"></i>
-                                                Feeling {{ commentPanelPost.sharedPost.feeling }}
-                                            </div>
-                                            <div v-if="commentPanelPost.sharedPost.post_type === 'event' && commentPanelPost.sharedPost.event"
-                                                class="rounded-lg border bg-indigo-50/70 px-3 py-2 text-[11px] text-gray-700">
-                                                <div class="text-[10px] uppercase tracking-wide text-indigo-500">Event
-                                                </div>
-                                                <div class="mt-1 text-xs font-semibold text-gray-900">
-                                                    {{ commentPanelPost.sharedPost.event.title || 'Campus Event' }}
-                                                </div>
-                                                <div
-                                                    class="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
-                                                    <span v-if="commentPanelPost.sharedPost.event.date"><i
-                                                            class="mdi mdi-calendar-outline mr-1"></i>{{
-                                                                commentPanelPost.sharedPost.event.date }}</span>
-                                                    <span v-if="commentPanelPost.sharedPost.event.location"><i
-                                                            class="mdi mdi-map-marker-outline mr-1"></i>{{
-                                                                commentPanelPost.sharedPost.event.location }}</span>
-                                                </div>
-                                            </div>
-                                            <div v-if="commentPanelPost.sharedPost.media && commentPanelPost.sharedPost.media.length"
-                                                class="overflow-hidden rounded-lg border bg-white">
-                                                <img :src="commentPanelPost.sharedPost.media[0].url" alt="shared media"
-                                                    class="w-full max-h-[260px] object-cover" />
-                                            </div>
-                                        </div>
-                                    </button>
-                                </div>
-                                <div v-else-if="commentPanelPost.sharedPostId"
-                                    class="mt-3 rounded-xl border bg-gray-50 px-4 py-3 text-xs text-gray-500">
-                                    Original post unavailable.
-                                </div>
-                                <div v-if="commentPanelPost.post_type === 'event' && commentPanelPost.event"
-                                    class="mt-3 rounded-xl border bg-indigo-50/60 px-4 py-3 text-xs text-gray-700">
-                                    <div class="text-[11px] uppercase tracking-wide text-indigo-500">Event</div>
-                                    <div class="mt-1 text-sm font-semibold text-gray-900">{{
-                                        commentPanelPost.event.title || 'Campus Event' }}</div>
-                                    <div class="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                                        <span v-if="commentPanelPost.event.date"><i
-                                                class="mdi mdi-calendar-outline mr-1"></i>{{
-                                                    commentPanelPost.event.date }}</span>
-                                        <span v-if="commentPanelPost.event.location"><i
-                                                class="mdi mdi-map-marker-outline mr-1"></i>{{
-                                                    commentPanelPost.event.location
-                                                }}</span>
-                                    </div>
-                                </div>
-                                <div v-if="commentPanelPost.media && commentPanelPost.media.length"
-                                    class="mt-3 overflow-hidden rounded-xl border bg-gray-50">
+                            <div class="flex-1 flex flex-col min-h-0">
+                                <div v-if="isMediaCommentModal" class="md:hidden bg-black">
                                     <img :src="commentPanelPost.media[0].url" alt="post media"
-                                        class="w-full max-h-[320px] object-cover" />
+                                        class="w-full max-h-[260px] object-contain" />
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="px-4 sm:px-6 py-4 space-y-4 overflow-y-auto">
-                        <div v-if="!commentPanelThreads.length" class="text-sm text-gray-500">
-                            No comments yet.
-                        </div>
-                        <div v-else v-for="thread in commentPanelThreads"
-                            :key="thread.comment.id || thread.comment.created_at" class="space-y-2">
-                            <div class="flex items-start gap-3">
-                                <div
-                                    class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-[11px] text-gray-600 font-semibold overflow-hidden">
-                                    <img v-if="thread.comment.avatar" :src="thread.comment.avatar" alt="avatar"
-                                        class="h-full w-full object-cover" />
-                                    <span v-else>{{ initials(thread.comment.name) }}</span>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="rounded-2xl bg-gray-50 px-3 py-2">
-                                        <div class="text-xs font-semibold text-gray-800">{{ thread.comment.name }}</div>
-                                        <div class="text-xs text-gray-700">{{ thread.comment.text }}</div>
-                                    </div>
-                                    <div class="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
-                                        <span>{{ formatRelativeTime(thread.comment.created_at || thread.comment.time)
-                                        }}</span>
-                                        <button type="button" class="font-medium text-gray-500 hover:text-indigo-600"
-                                            @click="startReply(commentPanelPost.id, thread.comment)">
-                                            Reply
-                                        </button>
-                                    </div>
-                                    <button v-if="thread.replyCount" type="button"
-                                        class="mt-2 text-[11px] font-medium text-gray-500 hover:text-indigo-600"
-                                        @click="toggleReplies(commentPanelPost.id, thread.comment.id)">
-                                        {{ isRepliesExpanded(commentPanelPost.id, thread.comment.id)
-                                            ? 'Hide replies'
-                                            : `View all ${thread.replyCount} ${thread.replyCount === 1 ? 'reply' :
-                                                'replies'}` }}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div v-if="isReplyingTo(commentPanelPost.id, thread.comment.id)"
-                                class="ml-11 flex items-start gap-3 border-l border-gray-100 pl-4">
-                                <div
-                                    class="h-7 w-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
-                                    <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
-                                        class="h-full w-full object-cover" />
-                                    <span v-else>{{ initials(fullName) }}</span>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="mb-1 text-[11px] text-gray-500">
-                                        Replying to <span class="font-semibold text-gray-700">{{ activeReply &&
-                                            (activeReply.mentionName || thread.comment.name) }}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <input
-                                            v-model="replyDrafts[draftKeyFor(commentPanelPost.id, thread.comment.id)]"
-                                            type="text" placeholder="Write a reply..."
-                                            class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                                            @keyup.enter="sendComment(commentPanelPost.id, thread.comment.id)" />
-                                        <button type="button"
-                                            class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
-                                            :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, thread.comment.id)]"
-                                            @click="sendComment(commentPanelPost.id, thread.comment.id)">
-                                            Send
-                                        </button>
-                                        <button type="button" class="text-[11px] text-gray-400 hover:text-gray-600"
-                                            @click="cancelReply">
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="isRepliesExpanded(commentPanelPost.id, thread.comment.id)"
-                                class="ml-11 space-y-3 border-l border-gray-100 pl-4">
-                                <div v-for="replyThread in thread.replies"
-                                    :key="replyThread.comment.id || replyThread.comment.created_at" class="space-y-2">
+                                <div class="px-4 sm:px-6 py-4 border-b">
                                     <div class="flex items-start gap-3">
                                         <div
-                                            class="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-600 font-semibold overflow-hidden">
-                                            <img v-if="replyThread.comment.avatar" :src="replyThread.comment.avatar"
-                                                alt="avatar" class="h-full w-full object-cover" />
-                                            <span v-else>{{ initials(replyThread.comment.name) }}</span>
+                                            class="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+                                            <img v-if="commentPanelPost.authorAvatar"
+                                                :src="commentPanelPost.authorAvatar" alt="avatar"
+                                                class="h-full w-full object-cover" />
+                                            <span v-else class="text-xs font-semibold text-gray-600">{{
+                                                initials(commentPanelPost.authorName)
+                                            }}</span>
                                         </div>
                                         <div class="flex-1">
-                                            <div class="rounded-2xl bg-gray-50/80 px-3 py-2">
-                                                <div class="text-[11px] font-semibold text-gray-800">{{
-                                                    replyThread.comment.name }}
-                                                </div>
-                                                <div class="text-[11px] text-gray-700">
-                                                    <span v-if="replyThread.comment.mention_name"
-                                                        class="font-semibold text-indigo-600">
-                                                        {{ replyThread.comment.mention_name }}
-                                                    </span>
-                                                    <span v-if="replyThread.comment.mention_name"> </span>
-                                                    {{ replyDisplayText(replyThread.comment) }}
-                                                </div>
+                                            <div class="text-sm font-semibold text-gray-900">{{
+                                                commentPanelPost.authorName }}</div>
+                                            <div class="text-xs text-gray-500">{{ commentPanelPost.handle }} | {{
+                                                commentPanelPost.time }}</div>
+                                            <div v-if="commentPanelPost.text" class="mt-2 text-sm text-gray-800">
+                                                {{ commentPanelPost.text }}
                                             </div>
-                                            <div class="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
-                                                <span>{{ formatRelativeTime(replyThread.comment.created_at ||
-                                                    replyThread.comment.time) }}</span>
+                                            <div v-if="commentPanelPost.sharedPost"
+                                                class="mt-3 rounded-xl border bg-gray-50">
                                                 <button type="button"
-                                                    class="font-medium text-gray-500 hover:text-indigo-600"
-                                                    @click="startReply(commentPanelPost.id, replyThread.comment)">
-                                                    Reply
+                                                    class="w-full text-left hover:bg-gray-50/80 transition"
+                                                    @click="openSharedPost(commentPanelPost.sharedPost)">
+                                                    <div class="flex items-start gap-3 border-b px-4 py-3">
+                                                        <div
+                                                            class="h-8 w-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                                            <img v-if="commentPanelPost.sharedPost.authorAvatar"
+                                                                :src="commentPanelPost.sharedPost.authorAvatar"
+                                                                alt="avatar" class="h-full w-full object-cover" />
+                                                            <span v-else>{{
+                                                                initials(commentPanelPost.sharedPost.authorName)
+                                                            }}</span>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <div class="text-xs font-semibold text-gray-900 truncate">
+                                                                {{ commentPanelPost.sharedPost.authorName }}
+                                                            </div>
+                                                            <div class="text-[11px] text-gray-500">
+                                                                {{ commentPanelPost.sharedPost.handle }} | {{
+                                                                    commentPanelPost.sharedPost.time }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="px-4 py-3 space-y-2 text-xs text-gray-700">
+                                                        <p v-if="commentPanelPost.sharedPost.text"
+                                                            class="text-sm text-gray-800">
+                                                            {{ commentPanelPost.sharedPost.text }}
+                                                        </p>
+                                                        <div v-if="commentPanelPost.sharedPost.post_type === 'feeling' && commentPanelPost.sharedPost.feeling"
+                                                            class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11px] text-amber-700">
+                                                            <i class="mdi mdi-emoticon-outline"></i>
+                                                            Feeling {{ commentPanelPost.sharedPost.feeling }}
+                                                        </div>
+                                                        <div v-if="commentPanelPost.sharedPost.post_type === 'event' && commentPanelPost.sharedPost.event"
+                                                            class="rounded-lg border bg-indigo-50/70 px-3 py-2 text-[11px] text-gray-700">
+                                                            <div
+                                                                class="text-[10px] uppercase tracking-wide text-indigo-500">
+                                                                Event
+                                                            </div>
+                                                            <div class="mt-1 text-xs font-semibold text-gray-900">
+                                                                {{ commentPanelPost.sharedPost.event.title || 'Campus Event' }}
+                                                            </div>
+                                                            <div
+                                                                class="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
+                                                                <span v-if="commentPanelPost.sharedPost.event.date"><i
+                                                                        class="mdi mdi-calendar-outline mr-1"></i>{{
+                                                                            commentPanelPost.sharedPost.event.date }}</span>
+                                                                <span
+                                                                    v-if="commentPanelPost.sharedPost.event.location"><i
+                                                                        class="mdi mdi-map-marker-outline mr-1"></i>{{
+                                                                            commentPanelPost.sharedPost.event.location }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div v-if="commentPanelPost.sharedPost.media && commentPanelPost.sharedPost.media.length"
+                                                            class="overflow-hidden rounded-lg border bg-white">
+                                                            <img :src="commentPanelPost.sharedPost.media[0].url"
+                                                                alt="shared media"
+                                                                class="w-full max-h-[260px] object-cover" />
+                                                        </div>
+                                                    </div>
                                                 </button>
                                             </div>
-                                            <button v-if="replyThread.replyCount" type="button"
-                                                class="mt-2 text-[11px] font-medium text-gray-500 hover:text-indigo-600"
-                                                @click="toggleReplies(commentPanelPost.id, replyThread.comment.id)">
-                                                {{ isRepliesExpanded(commentPanelPost.id, replyThread.comment.id)
-                                                    ? 'Hide replies'
-                                                    : `View all ${replyThread.replyCount} ${replyThread.replyCount === 1 ?
-                                                        'reply' :
-                                                        'replies'}` }}
-                                            </button>
+                                            <div v-else-if="commentPanelPost.sharedPostId"
+                                                class="mt-3 rounded-xl border bg-gray-50 px-4 py-3 text-xs text-gray-500">
+                                                Original post unavailable.
+                                            </div>
+                                            <div v-if="commentPanelPost.post_type === 'event' && commentPanelPost.event"
+                                                class="mt-3 rounded-xl border bg-indigo-50/60 px-4 py-3 text-xs text-gray-700">
+                                                <div class="text-[11px] uppercase tracking-wide text-indigo-500">Event
+                                                </div>
+                                                <div class="mt-1 text-sm font-semibold text-gray-900">{{
+                                                    commentPanelPost.event.title || 'Campus Event' }}</div>
+                                                <div
+                                                    class="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                                                    <span v-if="commentPanelPost.event.date"><i
+                                                            class="mdi mdi-calendar-outline mr-1"></i>{{
+                                                                commentPanelPost.event.date }}</span>
+                                                    <span v-if="commentPanelPost.event.location"><i
+                                                            class="mdi mdi-map-marker-outline mr-1"></i>{{
+                                                                commentPanelPost.event.location
+                                                            }}</span>
+                                                </div>
+                                            </div>
+                                            <div v-if="commentPanelPost.media && commentPanelPost.media.length && !isMediaCommentModal"
+                                                class="mt-3 overflow-hidden rounded-xl border bg-gray-50">
+                                                <button type="button" class="block w-full"
+                                                    @click="openMediaModal(commentPanelPost)">
+                                                    <img :src="commentPanelPost.media[0].url" alt="post media"
+                                                        class="w-full max-h-[320px] object-cover" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="px-4 sm:px-6 py-4 space-y-4 overflow-y-auto flex-1">
+                                    <div v-if="!commentPanelThreads.length" class="text-sm text-gray-500">
+                                        No comments yet.
+                                    </div>
+                                    <div v-else v-for="thread in commentPanelThreads"
+                                        :key="thread.comment.id || thread.comment.created_at" class="space-y-2">
+                                        <div class="flex items-start gap-3">
+                                            <div
+                                                class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-[11px] text-gray-600 font-semibold overflow-hidden">
+                                                <img v-if="thread.comment.avatar" :src="thread.comment.avatar"
+                                                    alt="avatar" class="h-full w-full object-cover" />
+                                                <span v-else>{{ initials(thread.comment.name) }}</span>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="rounded-2xl bg-gray-50 px-3 py-2">
+                                                    <div class="text-xs font-semibold text-gray-800">{{
+                                                        thread.comment.name }}</div>
+                                                    <div class="text-xs text-gray-700">{{ thread.comment.text }}</div>
+                                                </div>
+                                                <div class="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
+                                                    <span>{{ formatRelativeTime(thread.comment.created_at ||
+                                                        thread.comment.time)
+                                                    }}</span>
+                                                    <button type="button"
+                                                        class="font-medium text-gray-500 hover:text-indigo-600"
+                                                        @click="startReply(commentPanelPost.id, thread.comment)">
+                                                        Reply
+                                                    </button>
+                                                </div>
+                                                <button v-if="thread.replyCount" type="button"
+                                                    class="mt-2 text-[11px] font-medium text-gray-500 hover:text-indigo-600"
+                                                    @click="toggleReplies(commentPanelPost.id, thread.comment.id)">
+                                                    {{ isRepliesExpanded(commentPanelPost.id, thread.comment.id)
+                                                        ? 'Hide replies'
+                                                        : `View all ${thread.replyCount} ${thread.replyCount === 1 ? 'reply'
+                                                            :
+                                                            'replies'}` }}
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                    <div v-if="isReplyingTo(commentPanelPost.id, replyThread.comment.id)"
-                                        class="ml-9 flex items-start gap-3 border-l border-gray-100 pl-4">
+                                        <div v-if="isReplyingTo(commentPanelPost.id, thread.comment.id)"
+                                            class="ml-11 flex items-start gap-3 border-l border-gray-100 pl-4">
+                                            <div
+                                                class="h-7 w-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                                <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
+                                                    class="h-full w-full object-cover" />
+                                                <span v-else>{{ initials(fullName) }}</span>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="mb-1 text-[11px] text-gray-500">
+                                                    Replying to <span class="font-semibold text-gray-700">{{ activeReply
+                                                        &&
+                                                        (activeReply.mentionName || thread.comment.name) }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <input
+                                                        v-model="replyDrafts[draftKeyFor(commentPanelPost.id, thread.comment.id)]"
+                                                        type="text" placeholder="Write a reply..."
+                                                        class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                                                        @keyup.enter="sendComment(commentPanelPost.id, thread.comment.id)" />
+                                                    <button type="button"
+                                                        class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
+                                                        :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, thread.comment.id)]"
+                                                        @click="sendComment(commentPanelPost.id, thread.comment.id)">
+                                                        Send
+                                                    </button>
+                                                    <button type="button"
+                                                        class="text-[11px] text-gray-400 hover:text-gray-600"
+                                                        @click="cancelReply">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="isRepliesExpanded(commentPanelPost.id, thread.comment.id)"
+                                            class="ml-11 space-y-3 border-l border-gray-100 pl-4">
+                                            <div v-for="replyThread in thread.replies"
+                                                :key="replyThread.comment.id || replyThread.comment.created_at"
+                                                class="space-y-2">
+                                                <div class="flex items-start gap-3">
+                                                    <div
+                                                        class="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-600 font-semibold overflow-hidden">
+                                                        <img v-if="replyThread.comment.avatar"
+                                                            :src="replyThread.comment.avatar" alt="avatar"
+                                                            class="h-full w-full object-cover" />
+                                                        <span v-else>{{ initials(replyThread.comment.name) }}</span>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="rounded-2xl bg-gray-50/80 px-3 py-2">
+                                                            <div class="text-[11px] font-semibold text-gray-800">{{
+                                                                replyThread.comment.name }}
+                                                            </div>
+                                                            <div class="text-[11px] text-gray-700">
+                                                                <span v-if="replyThread.comment.mention_name"
+                                                                    class="font-semibold text-indigo-600">
+                                                                    {{ replyThread.comment.mention_name }}
+                                                                </span>
+                                                                <span v-if="replyThread.comment.mention_name"> </span>
+                                                                {{ replyDisplayText(replyThread.comment) }}
+                                                            </div>
+                                                        </div>
+                                                        <div
+                                                            class="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
+                                                            <span>{{ formatRelativeTime(replyThread.comment.created_at
+                                                                ||
+                                                                replyThread.comment.time) }}</span>
+                                                            <button type="button"
+                                                                class="font-medium text-gray-500 hover:text-indigo-600"
+                                                                @click="startReply(commentPanelPost.id, replyThread.comment)">
+                                                                Reply
+                                                            </button>
+                                                        </div>
+                                                        <button v-if="replyThread.replyCount" type="button"
+                                                            class="mt-2 text-[11px] font-medium text-gray-500 hover:text-indigo-600"
+                                                            @click="toggleReplies(commentPanelPost.id, replyThread.comment.id)">
+                                                            {{ isRepliesExpanded(commentPanelPost.id,
+                                                                replyThread.comment.id)
+                                                                ? 'Hide replies'
+                                                                : `View all ${replyThread.replyCount}
+                                                            ${replyThread.replyCount === 1 ?
+                                                                    'reply' :
+                                                                    'replies'}` }}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div v-if="isReplyingTo(commentPanelPost.id, replyThread.comment.id)"
+                                                    class="ml-9 flex items-start gap-3 border-l border-gray-100 pl-4">
+                                                    <div
+                                                        class="h-7 w-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                                        <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
+                                                            class="h-full w-full object-cover" />
+                                                        <span v-else>{{ initials(fullName) }}</span>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="mb-1 text-[11px] text-gray-500">
+                                                            Replying to <span class="font-semibold text-gray-700">{{
+                                                                activeReply &&
+                                                                (activeReply.mentionName || replyThread.comment.name)
+                                                            }}</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <input
+                                                                v-model="replyDrafts[draftKeyFor(commentPanelPost.id, replyThread.comment.id)]"
+                                                                type="text" placeholder="Write a reply..."
+                                                                class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                                                                @keyup.enter="sendComment(commentPanelPost.id, replyThread.comment.id)" />
+                                                            <button type="button"
+                                                                class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
+                                                                :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, replyThread.comment.id)]"
+                                                                @click="sendComment(commentPanelPost.id, replyThread.comment.id)">
+                                                                Send
+                                                            </button>
+                                                            <button type="button"
+                                                                class="text-[11px] text-gray-400 hover:text-gray-600"
+                                                                @click="cancelReply">
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div v-if="replyThread.replyCount && isRepliesExpanded(commentPanelPost.id, replyThread.comment.id)"
+                                                    class="ml-9 space-y-2 border-l border-gray-100 pl-4">
+                                                    <div v-for="depth2Thread in replyThread.threads"
+                                                        :key="depth2Thread.comment.id || depth2Thread.comment.created_at"
+                                                        class="space-y-2">
+                                                        <div class="flex items-start gap-3">
+                                                            <div
+                                                                class="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-600 font-semibold overflow-hidden">
+                                                                <img v-if="depth2Thread.comment.avatar"
+                                                                    :src="depth2Thread.comment.avatar" alt="avatar"
+                                                                    class="h-full w-full object-cover" />
+                                                                <span v-else>{{ initials(depth2Thread.comment.name)
+                                                                }}</span>
+                                                            </div>
+                                                            <div class="flex-1">
+                                                                <div class="rounded-2xl bg-gray-50/80 px-3 py-2">
+                                                                    <div
+                                                                        class="text-[11px] font-semibold text-gray-800">
+                                                                        {{
+                                                                            depth2Thread.comment.name }}</div>
+                                                                    <div class="text-[11px] text-gray-700">
+                                                                        <span v-if="depth2Thread.comment.mention_name"
+                                                                            class="font-semibold text-indigo-600">
+                                                                            {{ depth2Thread.comment.mention_name }}
+                                                                        </span>
+                                                                        <span v-if="depth2Thread.comment.mention_name">
+                                                                        </span>
+                                                                        {{ replyDisplayText(depth2Thread.comment) }}
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    class="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
+                                                                    <span>{{
+                                                                        formatRelativeTime(depth2Thread.comment.created_at
+                                                                            ||
+                                                                            depth2Thread.comment.time) }}</span>
+                                                                    <button type="button"
+                                                                        class="font-medium text-gray-500 hover:text-indigo-600"
+                                                                        @click="startReply(commentPanelPost.id, depth2Thread.comment)">
+                                                                        Reply
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div v-if="isReplyingTo(commentPanelPost.id, depth2Thread.comment.id)"
+                                                            class="mt-2 flex items-start gap-3 border-l border-gray-100 pl-4">
+                                                            <div
+                                                                class="h-6 w-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                                                <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
+                                                                    class="h-full w-full object-cover" />
+                                                                <span v-else>{{ initials(fullName) }}</span>
+                                                            </div>
+                                                            <div class="flex-1">
+                                                                <div class="mb-1 text-[11px] text-gray-500">
+                                                                    Replying to <span
+                                                                        class="font-semibold text-gray-700">{{
+                                                                            activeReply &&
+                                                                            (activeReply.mentionName ||
+                                                                                depth2Thread.comment.name)
+                                                                        }}</span>
+                                                                </div>
+                                                                <div class="flex items-center gap-2">
+                                                                    <input
+                                                                        v-model="replyDrafts[draftKeyFor(commentPanelPost.id, depth2Thread.comment.id)]"
+                                                                        type="text" placeholder="Write a reply..."
+                                                                        class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                                                                        @keyup.enter="sendComment(commentPanelPost.id, depth2Thread.comment.id)" />
+                                                                    <button type="button"
+                                                                        class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
+                                                                        :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, depth2Thread.comment.id)]"
+                                                                        @click="sendComment(commentPanelPost.id, depth2Thread.comment.id)">
+                                                                        Send
+                                                                    </button>
+                                                                    <button type="button"
+                                                                        class="text-[11px] text-gray-400 hover:text-gray-600"
+                                                                        @click="cancelReply">
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div v-if="depth2Thread.replies.length" class="mt-2 space-y-2">
+                                                            <div v-for="reply in depth2Thread.replies"
+                                                                :key="reply.id || reply.created_at" class="space-y-2">
+                                                                <div class="flex items-start gap-3">
+                                                                    <div
+                                                                        class="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-600 font-semibold overflow-hidden">
+                                                                        <img v-if="reply.avatar" :src="reply.avatar"
+                                                                            alt="avatar"
+                                                                            class="h-full w-full object-cover" />
+                                                                        <span v-else>{{ initials(reply.name) }}</span>
+                                                                    </div>
+                                                                    <div class="flex-1">
+                                                                        <div
+                                                                            class="rounded-2xl bg-gray-50/80 px-3 py-2">
+                                                                            <div
+                                                                                class="text-[11px] font-semibold text-gray-800">
+                                                                                {{
+                                                                                    reply.name
+                                                                                }}</div>
+                                                                            <div class="text-[11px] text-gray-700">
+                                                                                <span v-if="reply.mention_name"
+                                                                                    class="font-semibold text-indigo-600">
+                                                                                    {{ reply.mention_name }}
+                                                                                </span>
+                                                                                <span v-if="reply.mention_name"> </span>
+                                                                                {{ replyDisplayText(reply) }}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div
+                                                                            class="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
+                                                                            <span>{{ formatRelativeTime(reply.created_at
+                                                                                ||
+                                                                                reply.time)
+                                                                            }}</span>
+                                                                            <button type="button"
+                                                                                class="font-medium text-gray-500 hover:text-indigo-600"
+                                                                                @click="startReply(commentPanelPost.id, reply)">
+                                                                                Reply
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div v-if="isReplyingTo(commentPanelPost.id, reply.id)"
+                                                                    class="flex items-start gap-3 border-l border-gray-100 pl-4">
+                                                                    <div
+                                                                        class="h-6 w-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                                                        <img v-if="avatarUrl" :src="avatarUrl"
+                                                                            alt="avatar"
+                                                                            class="h-full w-full object-cover" />
+                                                                        <span v-else>{{ initials(fullName) }}</span>
+                                                                    </div>
+                                                                    <div class="flex-1">
+                                                                        <div class="mb-1 text-[11px] text-gray-500">
+                                                                            Replying to <span
+                                                                                class="font-semibold text-gray-700">{{
+                                                                                    activeReply
+                                                                                    && (activeReply.mentionName ||
+                                                                                        reply.name) }}</span>
+                                                                        </div>
+                                                                        <div class="flex items-center gap-2">
+                                                                            <input
+                                                                                v-model="replyDrafts[draftKeyFor(commentPanelPost.id, reply.id)]"
+                                                                                type="text"
+                                                                                placeholder="Write a reply..."
+                                                                                class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                                                                                @keyup.enter="sendComment(commentPanelPost.id, reply.id)" />
+                                                                            <button type="button"
+                                                                                class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
+                                                                                :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, reply.id)]"
+                                                                                @click="sendComment(commentPanelPost.id, reply.id)">
+                                                                                Send
+                                                                            </button>
+                                                                            <button type="button"
+                                                                                class="text-[11px] text-gray-400 hover:text-gray-600"
+                                                                                @click="cancelReply">
+                                                                                Cancel
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="border-t px-4 sm:px-6 py-4">
+                                    <div class="flex items-start gap-3">
                                         <div
-                                            class="h-7 w-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                            class="h-9 w-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[11px] text-gray-600 font-semibold">
                                             <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
                                                 class="h-full w-full object-cover" />
                                             <span v-else>{{ initials(fullName) }}</span>
                                         </div>
-                                        <div class="flex-1">
-                                            <div class="mb-1 text-[11px] text-gray-500">
-                                                Replying to <span class="font-semibold text-gray-700">{{ activeReply &&
-                                                    (activeReply.mentionName || replyThread.comment.name) }}</span>
-                                            </div>
-                                            <div class="flex items-center gap-2">
-                                                <input
-                                                    v-model="replyDrafts[draftKeyFor(commentPanelPost.id, replyThread.comment.id)]"
-                                                    type="text" placeholder="Write a reply..."
-                                                    class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                                                    @keyup.enter="sendComment(commentPanelPost.id, replyThread.comment.id)" />
-                                                <button type="button"
-                                                    class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
-                                                    :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, replyThread.comment.id)]"
-                                                    @click="sendComment(commentPanelPost.id, replyThread.comment.id)">
-                                                    Send
-                                                </button>
-                                                <button type="button"
-                                                    class="text-[11px] text-gray-400 hover:text-gray-600"
-                                                    @click="cancelReply">
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div v-if="replyThread.replyCount && isRepliesExpanded(commentPanelPost.id, replyThread.comment.id)"
-                                        class="ml-9 space-y-2 border-l border-gray-100 pl-4">
-                                        <div v-for="depth2Thread in replyThread.threads"
-                                            :key="depth2Thread.comment.id || depth2Thread.comment.created_at"
-                                            class="space-y-2">
-                                            <div class="flex items-start gap-3">
-                                                <div
-                                                    class="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-600 font-semibold overflow-hidden">
-                                                    <img v-if="depth2Thread.comment.avatar"
-                                                        :src="depth2Thread.comment.avatar" alt="avatar"
-                                                        class="h-full w-full object-cover" />
-                                                    <span v-else>{{ initials(depth2Thread.comment.name) }}</span>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <div class="rounded-2xl bg-gray-50/80 px-3 py-2">
-                                                        <div class="text-[11px] font-semibold text-gray-800">{{
-                                                            depth2Thread.comment.name }}</div>
-                                                        <div class="text-[11px] text-gray-700">
-                                                            <span v-if="depth2Thread.comment.mention_name"
-                                                                class="font-semibold text-indigo-600">
-                                                                {{ depth2Thread.comment.mention_name }}
-                                                            </span>
-                                                            <span v-if="depth2Thread.comment.mention_name"> </span>
-                                                            {{ replyDisplayText(depth2Thread.comment) }}
-                                                        </div>
-                                                    </div>
-                                                    <div class="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
-                                                        <span>{{ formatRelativeTime(depth2Thread.comment.created_at ||
-                                                            depth2Thread.comment.time) }}</span>
-                                                        <button type="button"
-                                                            class="font-medium text-gray-500 hover:text-indigo-600"
-                                                            @click="startReply(commentPanelPost.id, depth2Thread.comment)">
-                                                            Reply
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div v-if="isReplyingTo(commentPanelPost.id, depth2Thread.comment.id)"
-                                                class="mt-2 flex items-start gap-3 border-l border-gray-100 pl-4">
-                                                <div
-                                                    class="h-6 w-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
-                                                    <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
-                                                        class="h-full w-full object-cover" />
-                                                    <span v-else>{{ initials(fullName) }}</span>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <div class="mb-1 text-[11px] text-gray-500">
-                                                        Replying to <span class="font-semibold text-gray-700">{{
-                                                            activeReply &&
-                                                            (activeReply.mentionName || depth2Thread.comment.name)
-                                                        }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <input
-                                                            v-model="replyDrafts[draftKeyFor(commentPanelPost.id, depth2Thread.comment.id)]"
-                                                            type="text" placeholder="Write a reply..."
-                                                            class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                                                            @keyup.enter="sendComment(commentPanelPost.id, depth2Thread.comment.id)" />
-                                                        <button type="button"
-                                                            class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
-                                                            :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, depth2Thread.comment.id)]"
-                                                            @click="sendComment(commentPanelPost.id, depth2Thread.comment.id)">
-                                                            Send
-                                                        </button>
-                                                        <button type="button"
-                                                            class="text-[11px] text-gray-400 hover:text-gray-600"
-                                                            @click="cancelReply">
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div v-if="depth2Thread.replies.length" class="mt-2 space-y-2">
-                                                <div v-for="reply in depth2Thread.replies"
-                                                    :key="reply.id || reply.created_at" class="space-y-2">
-                                                    <div class="flex items-start gap-3">
-                                                        <div
-                                                            class="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-600 font-semibold overflow-hidden">
-                                                            <img v-if="reply.avatar" :src="reply.avatar" alt="avatar"
-                                                                class="h-full w-full object-cover" />
-                                                            <span v-else>{{ initials(reply.name) }}</span>
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <div class="rounded-2xl bg-gray-50/80 px-3 py-2">
-                                                                <div class="text-[11px] font-semibold text-gray-800">{{
-                                                                    reply.name
-                                                                }}</div>
-                                                                <div class="text-[11px] text-gray-700">
-                                                                    <span v-if="reply.mention_name"
-                                                                        class="font-semibold text-indigo-600">
-                                                                        {{ reply.mention_name }}
-                                                                    </span>
-                                                                    <span v-if="reply.mention_name"> </span>
-                                                                    {{ replyDisplayText(reply) }}
-                                                                </div>
-                                                            </div>
-                                                            <div
-                                                                class="mt-1 flex items-center gap-3 text-[10px] text-gray-400">
-                                                                <span>{{ formatRelativeTime(reply.created_at ||
-                                                                    reply.time)
-                                                                }}</span>
-                                                                <button type="button"
-                                                                    class="font-medium text-gray-500 hover:text-indigo-600"
-                                                                    @click="startReply(commentPanelPost.id, reply)">
-                                                                    Reply
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div v-if="isReplyingTo(commentPanelPost.id, reply.id)"
-                                                        class="flex items-start gap-3 border-l border-gray-100 pl-4">
-                                                        <div
-                                                            class="h-6 w-6 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
-                                                            <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
-                                                                class="h-full w-full object-cover" />
-                                                            <span v-else>{{ initials(fullName) }}</span>
-                                                        </div>
-                                                        <div class="flex-1">
-                                                            <div class="mb-1 text-[11px] text-gray-500">
-                                                                Replying to <span class="font-semibold text-gray-700">{{
-                                                                    activeReply
-                                                                    && (activeReply.mentionName || reply.name) }}</span>
-                                                            </div>
-                                                            <div class="flex items-center gap-2">
-                                                                <input
-                                                                    v-model="replyDrafts[draftKeyFor(commentPanelPost.id, reply.id)]"
-                                                                    type="text" placeholder="Write a reply..."
-                                                                    class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                                                                    @keyup.enter="sendComment(commentPanelPost.id, reply.id)" />
-                                                                <button type="button"
-                                                                    class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
-                                                                    :disabled="!replyDrafts[draftKeyFor(commentPanelPost.id, reply.id)]"
-                                                                    @click="sendComment(commentPanelPost.id, reply.id)">
-                                                                    Send
-                                                                </button>
-                                                                <button type="button"
-                                                                    class="text-[11px] text-gray-400 hover:text-gray-600"
-                                                                    @click="cancelReply">
-                                                                    Cancel
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                        <div class="flex-1 flex items-center gap-2">
+                                            <input v-model="commentDrafts[commentPanelPost.id]" type="text"
+                                                placeholder="Write a comment..."
+                                                class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                                                @keyup.enter="sendComment(commentPanelPost.id)" />
+                                            <button type="button"
+                                                class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
+                                                :disabled="!commentDrafts[commentPanelPost.id]"
+                                                @click="sendComment(commentPanelPost.id)">
+                                                Send
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="border-t px-4 sm:px-6 py-4">
-                        <div class="flex items-start gap-3">
-                            <div
-                                class="h-9 w-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[11px] text-gray-600 font-semibold">
-                                <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
-                                    class="h-full w-full object-cover" />
-                                <span v-else>{{ initials(fullName) }}</span>
-                            </div>
-                            <div class="flex-1 flex items-center gap-2">
-                                <input v-model="commentDrafts[commentPanelPost.id]" type="text"
-                                    placeholder="Write a comment..."
-                                    class="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-xs focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                                    @keyup.enter="sendComment(commentPanelPost.id)" />
-                                <button type="button"
-                                    class="rounded-full bg-indigo-600 px-3 py-2 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-60"
-                                    :disabled="!commentDrafts[commentPanelPost.id]"
-                                    @click="sendComment(commentPanelPost.id)">
-                                    Send
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -1956,95 +2038,97 @@ const openClub = (clubId) => {
             <div v-if="shareModalOpen && shareTargetPost"
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
                 @click.self="closeShareModal">
-                <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-                    <div class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
-                        <div class="text-sm font-semibold text-gray-800">Share post</div>
-                        <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeShareModal">
-                            <i class="mdi mdi-close"></i>
-                        </button>
-                    </div>
-                    <div class="px-4 sm:px-6 py-4 space-y-4">
-                        <div class="flex items-start gap-3">
-                            <div
-                                class="h-9 w-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[11px] text-gray-600 font-semibold">
-                                <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
-                                    class="h-full w-full object-cover" />
-                                <span v-else>{{ initials(fullName) }}</span>
-                            </div>
-                            <textarea v-model="shareDraft" rows="3" placeholder="Say something about this..."
-                                class="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-700 focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"></textarea>
+                    <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+                        <div class="flex items-center justify-between border-b px-4 sm:px-6 py-3">
+                            <div class="text-sm font-semibold text-gray-800">Share post</div>
+                            <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeShareModal">
+                                <i class="mdi mdi-close"></i>
+                            </button>
                         </div>
+                        <div class="px-4 sm:px-6 py-4 space-y-4">
+                            <div class="flex items-start gap-3">
+                                <div
+                                    class="h-9 w-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center text-[11px] text-gray-600 font-semibold">
+                                    <img v-if="avatarUrl" :src="avatarUrl" alt="avatar"
+                                        class="h-full w-full object-cover" />
+                                    <span v-else>{{ initials(fullName) }}</span>
+                                </div>
+                                <textarea v-model="shareDraft" rows="3" placeholder="Say something about this..."
+                                    class="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-700 focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"></textarea>
+                            </div>
 
-                        <div v-if="sharePreviewPost" class="rounded-xl border bg-gray-50">
-                            <button type="button" class="w-full text-left hover:bg-gray-50/80 transition"
-                                @click="openSharedPost(sharePreviewPost)">
-                                <div class="flex items-start gap-3 border-b px-4 py-3">
-                                    <div
-                                        class="h-8 w-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
-                                        <img v-if="sharePreviewPost.authorAvatar" :src="sharePreviewPost.authorAvatar"
-                                            alt="avatar" class="h-full w-full object-cover" />
-                                        <span v-else>{{ initials(sharePreviewPost.authorName) }}</span>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="text-xs font-semibold text-gray-900 truncate">
-                                            {{ sharePreviewPost.authorName }}
+                            <div v-if="sharePreviewPost" class="rounded-xl border bg-gray-50">
+                                <button type="button" class="w-full text-left hover:bg-gray-50/80 transition"
+                                    @click="openSharedPost(sharePreviewPost)">
+                                    <div class="flex items-start gap-3 border-b px-4 py-3">
+                                        <div
+                                            class="h-8 w-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-[10px] text-gray-600 font-semibold">
+                                            <img v-if="sharePreviewPost.authorAvatar"
+                                                :src="sharePreviewPost.authorAvatar" alt="avatar"
+                                                class="h-full w-full object-cover" />
+                                            <span v-else>{{ initials(sharePreviewPost.authorName) }}</span>
                                         </div>
-                                        <div class="text-[11px] text-gray-500">
-                                            {{ sharePreviewPost.handle }} | {{ sharePreviewPost.time }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="px-4 py-3 space-y-2 text-xs text-gray-700">
-                                    <p v-if="sharePreviewPost.text" class="text-sm text-gray-800">
-                                        {{ sharePreviewPost.text }}
-                                    </p>
-                                    <div v-if="sharePreviewPost.post_type === 'feeling' && sharePreviewPost.feeling"
-                                        class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11px] text-amber-700">
-                                        <i class="mdi mdi-emoticon-outline"></i>
-                                        Feeling {{ sharePreviewPost.feeling }}
-                                    </div>
-                                    <div v-if="sharePreviewPost.post_type === 'event' && sharePreviewPost.event"
-                                        class="rounded-lg border bg-indigo-50/70 px-3 py-2 text-[11px] text-gray-700">
-                                        <div class="text-[10px] uppercase tracking-wide text-indigo-500">Event</div>
-                                        <div class="mt-1 text-xs font-semibold text-gray-900">
-                                            {{ sharePreviewPost.event.title || 'Campus Event' }}
-                                        </div>
-                                        <div class="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
-                                            <span v-if="sharePreviewPost.event.date"><i
-                                                    class="mdi mdi-calendar-outline mr-1"></i>{{
-                                                        sharePreviewPost.event.date }}</span>
-                                            <span v-if="sharePreviewPost.event.location"><i
-                                                    class="mdi mdi-map-marker-outline mr-1"></i>{{
-                                                        sharePreviewPost.event.location }}</span>
+                                        <div class="min-w-0">
+                                            <div class="text-xs font-semibold text-gray-900 truncate">
+                                                {{ sharePreviewPost.authorName }}
+                                            </div>
+                                            <div class="text-[11px] text-gray-500">
+                                                {{ sharePreviewPost.handle }} | {{ sharePreviewPost.time }}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div v-if="sharePreviewPost.media && sharePreviewPost.media.length"
-                                        class="overflow-hidden rounded-lg border bg-white">
-                                        <img :src="sharePreviewPost.media[0].url" alt="shared media"
-                                            class="w-full max-h-[260px] object-cover" />
+                                    <div class="px-4 py-3 space-y-2 text-xs text-gray-700">
+                                        <p v-if="sharePreviewPost.text" class="text-sm text-gray-800">
+                                            {{ sharePreviewPost.text }}
+                                        </p>
+                                        <div v-if="sharePreviewPost.post_type === 'feeling' && sharePreviewPost.feeling"
+                                            class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[11px] text-amber-700">
+                                            <i class="mdi mdi-emoticon-outline"></i>
+                                            Feeling {{ sharePreviewPost.feeling }}
+                                        </div>
+                                        <div v-if="sharePreviewPost.post_type === 'event' && sharePreviewPost.event"
+                                            class="rounded-lg border bg-indigo-50/70 px-3 py-2 text-[11px] text-gray-700">
+                                            <div class="text-[10px] uppercase tracking-wide text-indigo-500">Event</div>
+                                            <div class="mt-1 text-xs font-semibold text-gray-900">
+                                                {{ sharePreviewPost.event.title || 'Campus Event' }}
+                                            </div>
+                                            <div
+                                                class="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
+                                                <span v-if="sharePreviewPost.event.date"><i
+                                                        class="mdi mdi-calendar-outline mr-1"></i>{{
+                                                            sharePreviewPost.event.date }}</span>
+                                                <span v-if="sharePreviewPost.event.location"><i
+                                                        class="mdi mdi-map-marker-outline mr-1"></i>{{
+                                                            sharePreviewPost.event.location }}</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="sharePreviewPost.media && sharePreviewPost.media.length"
+                                            class="overflow-hidden rounded-lg border bg-white">
+                                            <img :src="sharePreviewPost.media[0].url" alt="shared media"
+                                                class="w-full max-h-[260px] object-cover" />
+                                        </div>
                                     </div>
-                                </div>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="border-t px-4 sm:px-6 py-3 flex items-center justify-end gap-2">
+                            <button type="button"
+                                class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                                @click="closeShareModal">
+                                Cancel
+                            </button>
+                            <button type="button"
+                                class="rounded-full bg-indigo-600 px-5 py-2 text-xs text-white hover:bg-indigo-500 disabled:opacity-60"
+                                :disabled="shareSubmitting" @click="submitShare">
+                                {{ shareSubmitting ? 'Sharing...' : 'Share now' }}
                             </button>
                         </div>
                     </div>
-                    <div class="border-t px-4 sm:px-6 py-3 flex items-center justify-end gap-2">
-                        <button type="button"
-                            class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
-                            @click="closeShareModal">
-                            Cancel
-                        </button>
-                        <button type="button"
-                            class="rounded-full bg-indigo-600 px-5 py-2 text-xs text-white hover:bg-indigo-500 disabled:opacity-60"
-                            :disabled="shareSubmitting" @click="submitShare">
-                            {{ shareSubmitting ? 'Sharing...' : 'Share now' }}
-                        </button>
-                    </div>
                 </div>
-            </div>
         </SectionMain>
     </LayoutAuthenticated>
 </template>
 
-<style scoped>
-/* small niceties */
+    <style scoped>
+    /* small niceties */
 </style>
