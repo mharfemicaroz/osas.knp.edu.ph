@@ -502,25 +502,19 @@ async function refreshBadge() {
 }
 let pollId = null
 let msgPollId = null
-const onFocusNotif = () => { if (auth?.token) refreshBadge() }
-const onFocusMsgs = () => { if (auth?.token) msgsStore.fetchUnread({ limitPerModule: 10 }) }
 onMounted(() => {
   if (auth?.token) refreshBadge()
-  window.addEventListener('focus', onFocusNotif)
   pollId = window.setInterval(() => {
     if (document.hasFocus() && auth?.token) refreshBadge()
   }, 60000)
   // lightweight preload of messages badge
   if (auth?.token) msgsStore.fetchUnread({ limitPerModule: 10 })
-  window.addEventListener('focus', onFocusMsgs)
   msgPollId = window.setInterval(() => {
     if (document.hasFocus() && auth?.token) msgsStore.fetchUnread({ limitPerModule: 10 })
   }, 90000)
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('focus', onFocusNotif)
   if (pollId) { window.clearInterval(pollId); pollId = null }
-  window.removeEventListener('focus', onFocusMsgs)
   if (msgPollId) { window.clearInterval(msgPollId); msgPollId = null }
 })
 const shouldAttention = computed(() => (notifBadge.value > 0) && !notifOpen.value)

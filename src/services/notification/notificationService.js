@@ -14,6 +14,8 @@ function buildListParams(query = {}) {
     is_read,
     created_from,
     created_to,
+    fields,
+    include,
     ...rest
   } = query;
   const params = {
@@ -28,6 +30,8 @@ function buildListParams(query = {}) {
     is_read,
     created_from,
     created_to,
+    fields,
+    include,
     ...rest,
   };
   Object.keys(params).forEach(

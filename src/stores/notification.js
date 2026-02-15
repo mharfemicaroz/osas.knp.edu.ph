@@ -3,6 +3,8 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import notificationService from "@/services/notification/notificationService";
 
+const DEFAULT_LIST_FIELDS = "id,message,is_read,created_at";
+
 export const useNotificationStore = defineStore("notification", () => {
   const items = ref({
     total: 0,
@@ -23,7 +25,9 @@ export const useNotificationStore = defineStore("notification", () => {
     if (!force && isLoaded.value) return;
     try {
       isLoading.value = true;
-      const res = await notificationService.list(params);
+      const nextParams = { ...params };
+      if (!nextParams.fields) nextParams.fields = DEFAULT_LIST_FIELDS;
+      const res = await notificationService.list(nextParams);
       Object.assign(items.value, {
         total: res.total || 0,
         totalPages: res.totalPages || 1,
@@ -66,12 +70,14 @@ export const useNotificationStore = defineStore("notification", () => {
             limit: 1,
             order: "DESC",
             sort: "created_at",
+            fields: DEFAULT_LIST_FIELDS,
           }),
           notificationService.list({
             page: 1,
             limit: 1,
             order: "DESC",
             sort: "created_at",
+            fields: DEFAULT_LIST_FIELDS,
           }),
         ]);
         const readTotal = Number(readRes.total || 0);
@@ -91,12 +97,14 @@ export const useNotificationStore = defineStore("notification", () => {
             limit: 1,
             order: "DESC",
             sort: "created_at",
+            fields: DEFAULT_LIST_FIELDS,
           }),
           notificationService.list({
             page: 1,
             limit: 1,
             order: "DESC",
             sort: "created_at",
+            fields: DEFAULT_LIST_FIELDS,
           }),
         ]);
         const readTotal = Number(readRes.total || 0);
