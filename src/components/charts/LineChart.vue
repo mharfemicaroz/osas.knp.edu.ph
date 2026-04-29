@@ -29,7 +29,9 @@ let chart
 
 Chart.register(LineElement, PointElement, LineController, LinearScale, CategoryScale, Tooltip)
 
-onBeforeUnmount(() => {})
+onBeforeUnmount(() => {
+    chart?.destroy()
+})
 
 onMounted(() => {
     chart = new Chart(root.value, {

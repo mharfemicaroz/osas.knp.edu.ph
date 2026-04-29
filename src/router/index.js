@@ -62,7 +62,7 @@ const routes = [
     meta: { title: "Dashboard", requiresAuth: true, roles: ["admin"] },
     path: "/dashboard",
     name: "dashboard",
-    component: () => import("@/views/IndexPage.vue"),
+    component: () => import("@/views/IndexDashboardOptimizedPage.vue"),
   },
   {
     meta: {

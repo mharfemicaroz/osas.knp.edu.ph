@@ -22,7 +22,9 @@
 
     Chart.register(DoughnutController, ArcElement, Tooltip, Legend)
 
-    onBeforeUnmount(() => {})
+    onBeforeUnmount(() => {
+        chart?.destroy()
+    })
 
     onMounted(() => {
         chart = new Chart(root.value, {
