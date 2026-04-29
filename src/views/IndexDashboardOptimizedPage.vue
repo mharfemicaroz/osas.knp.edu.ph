@@ -230,6 +230,10 @@ const avgApprovalDays = computed(() => {
   return rows.reduce((sum, row) => sum + (daysBetween(row.approved_at, row.date_filed) ?? 0), 0) / rows.length
 })
 const distinctClubsActive = computed(() => new Set(filteredActivities.value.map((row) => row.club_id)).size)
+const totalClubs = computed(() => number(summary.value.totalClubs))
+const activeClubs = computed(() => number(summary.value.activeClubs))
+const totalUsers = computed(() => number(summary.value.totalUsers))
+const totalDocs = computed(() => number(summary.value.totalDocs))
 
 const topClubsByActivities = computed(() => {
   const counts = new Map()
@@ -285,9 +289,9 @@ const metricCards = computed(() => [
   { title: 'Budget Variance', value: `${number(summary.value.varianceVsProposed) >= 0 ? '+' : '-'}PHP ${money(Math.abs(number(summary.value.varianceVsProposed)))}`, meta: number(summary.value.varianceVsProposed) >= 0 ? 'Overspend vs proposed' : 'Underspend vs proposed', icon: mdiChartLine, tone: number(summary.value.varianceVsProposed) >= 0 ? 'text-rose-600' : 'text-emerald-600' },
   { title: 'Facility Requests', value: fmtInt(summary.value.totalUtilizationRequests), meta: `Approval Rate: ${pct(summary.value.approvedUtilizationRequests, summary.value.totalUtilizationRequests)}`, icon: mdiChartBar, tone: 'text-blue-600' },
   { title: 'Conflicts Detected', value: fmtInt(summary.value.conflictsDetected), meta: `Average duration: ${number(summary.value.avgEventDurationHrs).toFixed(2)} hrs`, icon: mdiAlertCircle, tone: 'text-rose-600' },
-  { title: 'Users Without Clubs', value: fmtInt(summary.value.usersWithoutClub), meta: `Out of ${fmtInt(summary.value.totalUsers)} users`, icon: mdiAccountGroup, tone: 'text-slate-600' },
-  { title: 'Clubs Without Members', value: fmtInt(summary.value.clubsWithoutMembers), meta: `Active clubs: ${fmtInt(summary.value.activeClubs)} / ${fmtInt(summary.value.totalClubs)}`, icon: mdiAccountGroup, tone: 'text-amber-600' },
-  { title: 'Avg Activities / Club', value: (totalClubs.value ? totalActivities.value / totalClubs.value : 0).toFixed(2), meta: `Documents indexed: ${fmtInt(summary.value.totalDocs)}`, icon: mdiChartLine, tone: 'text-indigo-600' },
+  { title: 'Users Without Clubs', value: fmtInt(summary.value.usersWithoutClub), meta: `Out of ${fmtInt(totalUsers.value)} users`, icon: mdiAccountGroup, tone: 'text-slate-600' },
+  { title: 'Clubs Without Members', value: fmtInt(summary.value.clubsWithoutMembers), meta: `Active clubs: ${fmtInt(activeClubs.value)} / ${fmtInt(totalClubs.value)}`, icon: mdiAccountGroup, tone: 'text-amber-600' },
+  { title: 'Avg Activities / Club', value: (totalClubs.value ? totalActivities.value / totalClubs.value : 0).toFixed(2), meta: `Documents indexed: ${fmtInt(totalDocs.value)}`, icon: mdiChartLine, tone: 'text-indigo-600' },
   { title: 'Grievances Filed', value: fmtInt(summary.value.totalGrievances), meta: `Open: ${fmtInt(summary.value.openGrievances)}`, icon: mdiAlertCircle, tone: 'text-rose-600' },
   { title: 'Avg Approval Time', value: `${avgApprovalDays.value.toFixed(1)} days`, meta: 'Approved activities only', icon: mdiClockTimeEight, tone: 'text-slate-600' },
   { title: 'Distinct Clubs Active', value: fmtInt(distinctClubsActive.value), meta: 'With at least 1 filtered activity', icon: mdiAccountGroup, tone: 'text-emerald-600' },
