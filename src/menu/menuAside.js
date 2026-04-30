@@ -11,6 +11,10 @@ import {
   mdiAccount,
   mdiBookOpenVariant,
   mdiFileCog,
+  mdiScaleBalance,
+  mdiClipboardTextSearchOutline,
+  mdiGavel,
+  mdiFileDocumentCheckOutline,
 } from "@mdi/js";
 
 /** Admin base menu (roles metadata) */
@@ -74,6 +78,30 @@ const ADMIN_MENU = [
     icon: mdiCommentAlert,
     label: "Grievances",
     roles: ["admin", "manager", "student_officer"],
+  },
+  {
+    to: "/student-discipline-conduct",
+    icon: mdiScaleBalance,
+    label: "Discipline Dashboard",
+    roles: ["admin", "manager"],
+  },
+  {
+    to: "/student-discipline-conduct/cases",
+    icon: mdiClipboardTextSearchOutline,
+    label: "Discipline Cases",
+    roles: ["admin", "manager"],
+  },
+  {
+    to: "/student-discipline-conduct/sanctions",
+    icon: mdiGavel,
+    label: "Discipline Sanctions",
+    roles: ["admin", "manager"],
+  },
+  {
+    to: "/student-discipline-conduct/appeals",
+    icon: mdiFileDocumentCheckOutline,
+    label: "Discipline Appeals",
+    roles: ["admin", "manager"],
   },
   {
     to: "/session-logs",

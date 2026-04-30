@@ -100,7 +100,37 @@ const routes = [
     },
     path: "/student-discipline-conduct",
     name: "student-discipline-conduct",
-    component: () => import("@/views/StudentDisciplineConductPage.vue"),
+    component: () => import("@/views/StudentDisciplineDashboardPage.vue"),
+  },
+  {
+    meta: {
+      title: "Discipline Case Workflow",
+      requiresAuth: true,
+      roles: ["admin", "manager", "superadmin"],
+    },
+    path: "/student-discipline-conduct/cases",
+    name: "student-discipline-cases",
+    component: () => import("@/views/StudentDisciplineCasesPage.vue"),
+  },
+  {
+    meta: {
+      title: "Discipline Sanctions and Offenses",
+      requiresAuth: true,
+      roles: ["admin", "manager", "superadmin"],
+    },
+    path: "/student-discipline-conduct/sanctions",
+    name: "student-discipline-sanctions",
+    component: () => import("@/views/StudentDisciplineSanctionsPage.vue"),
+  },
+  {
+    meta: {
+      title: "Discipline Appeals and Records",
+      requiresAuth: true,
+      roles: ["admin", "manager", "superadmin"],
+    },
+    path: "/student-discipline-conduct/appeals",
+    name: "student-discipline-appeals",
+    component: () => import("@/views/StudentDisciplineAppealsPage.vue"),
   },
   {
     meta: {

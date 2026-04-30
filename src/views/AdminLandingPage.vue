@@ -74,7 +74,7 @@ function openCard(card) {
             Welcome, {{ fullName }}.
           </h1>
           <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-            Choose the service area you want to enter. SDOS opens the current OSAS admin system. The other two routes are scaffolded placeholders so their modules can be developed later without changing this entry flow again.
+            Choose the service area you want to access. Student Development and Organization Services (SDOS) opens the current OSAS administrative system, while Student Welfare Services and Student Discipline and Conduct are prepared as dedicated service portals for their respective functions.
           </p>
         </div>
 
