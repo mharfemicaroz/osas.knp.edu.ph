@@ -2,7 +2,7 @@
 <template>
   <div class="flex justify-between items-center px-4 sm:px-6 py-3 bg-primary text-white">
     <div class="flex items-center gap-3">
-      <button class="md:hidden focus:outline-none" @click="$emit('toggle')">
+      <button v-if="showMenuToggle" class="md:hidden focus:outline-none" @click="$emit('toggle')">
         <i class="mdi mdi-menu text-white text-2xl"></i>
       </button>
       <div class="logo-box flex items-center">
@@ -303,6 +303,7 @@ defineOptions({ name: "AppHeader" });
 const props = defineProps({
   fullname: { type: String, default: "" },
   avatar: { type: String, default: "" },
+  showMenuToggle: { type: Boolean, default: true },
 });
 defineEmits(["toggle", "request-logout"]);
 

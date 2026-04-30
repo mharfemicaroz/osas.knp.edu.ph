@@ -5,6 +5,20 @@ import axios from "@/plugins/axiosConfig";
 import router from "@/router";
 import apiAuth from "@/services/authService";
 
+const privilegedRoles = new Set(["admin", "manager", "superadmin"]);
+
+function normalizeAuthRole(role) {
+  const normalized = String(role || "").toLowerCase();
+  return normalized === "superadmin" ? "admin" : normalized;
+}
+
+function getPostLoginRoute(role) {
+  const normalized = normalizeAuthRole(role);
+  if (normalized === "student") return "/student-dashboard";
+  if (privilegedRoles.has(normalized)) return "/admin-landing";
+  return "/profile";
+}
+
 export const useAuthStore = defineStore("auth", () => {
   const user = ref(JSON.parse(localStorage.getItem("userData")) || null);
   const token = ref(localStorage.getItem("authToken") || null);
@@ -55,7 +69,7 @@ export const useAuthStore = defineStore("auth", () => {
         user.value = {
           id: data.userdata.id,
           email: data.userdata.email,
-          role: data.userdata.role,
+          role: normalizeAuthRole(data.userdata.role),
           twoFAEnabled: data.userdata.twoFAEnabled,
           first_name: data.userdata.first_name,
           last_name: data.userdata.last_name,
@@ -66,7 +80,7 @@ export const useAuthStore = defineStore("auth", () => {
         try { localStorage.removeItem('appContext'); } catch {}
         try { const mod = await import('@/stores/appContext'); mod.useAppContextStore().setUserContext() } catch {}
 
-        router.push("/profile");
+        router.push(getPostLoginRoute(user.value?.role));
         return { ok: true };
       }
 
@@ -110,7 +124,7 @@ export const useAuthStore = defineStore("auth", () => {
       user.value = {
         id: data.userdata.id,
         email: data.userdata.email,
-        role: data.userdata.role,
+        role: normalizeAuthRole(data.userdata.role),
         twoFAEnabled: data.userdata.twoFAEnabled,
         first_name: data.userdata.first_name,
         last_name: data.userdata.last_name,
@@ -126,7 +140,7 @@ export const useAuthStore = defineStore("auth", () => {
         mod.useAppContextStore().setUserContext()
       } catch {}
 
-      router.push("/profile");
+      router.push(getPostLoginRoute(user.value?.role));
       return { ok: true };
     } catch (e) {
       throw new Error(e.response?.data?.message || "Login failed");
@@ -151,7 +165,7 @@ export const useAuthStore = defineStore("auth", () => {
       user.value = {
         id: response.data.userdata.id,
         email: response.data.userdata.email,
-        role: response.data.userdata.role,
+        role: normalizeAuthRole(response.data.userdata.role),
         twoFAEnabled: response.data.userdata.twoFAEnabled,
         first_name: response.data.userdata.first_name,
         last_name: response.data.userdata.last_name,
@@ -171,7 +185,7 @@ export const useAuthStore = defineStore("auth", () => {
       localStorage.removeItem("requires2FA");
       localStorage.removeItem("tempToken");
 
-      router.push("/profile");
+      router.push(getPostLoginRoute(user.value?.role));
     } catch (error) {
       throw new Error("Invalid OTP");
     } finally {
@@ -309,7 +323,9 @@ export const useAuthStore = defineStore("auth", () => {
     if (refreshToken.value)
       localStorage.setItem("refreshToken", refreshToken.value);
 
-    user.value = parsed.userdata || null;
+    user.value = parsed.userdata
+      ? { ...parsed.userdata, role: normalizeAuthRole(parsed.userdata.role) }
+      : null;
     if (user.value)
       localStorage.setItem("userData", JSON.stringify(user.value));
 
@@ -328,7 +344,7 @@ export const useAuthStore = defineStore("auth", () => {
     // Clear any previous club context after SSO
     try { localStorage.removeItem('appContext'); } catch {}
     try { import('@/stores/appContext').then(mod => { try { mod.useAppContextStore().setUserContext() } catch {} }).catch(() => {}) } catch {}
-    router.push("/profile");
+    router.push(getPostLoginRoute(user.value?.role));
     return true;
   };
 
@@ -340,7 +356,7 @@ export const useAuthStore = defineStore("auth", () => {
         user.value = {
           id: data.userdata.id,
           email: data.userdata.email,
-          role: data.userdata.role,
+          role: normalizeAuthRole(data.userdata.role),
           twoFAEnabled: data.userdata.twoFAEnabled,
           first_name: data.userdata.first_name,
           last_name: data.userdata.last_name,
@@ -349,7 +365,7 @@ export const useAuthStore = defineStore("auth", () => {
         };
         localStorage.setItem("userData", JSON.stringify(user.value));
       } else if (data?.role && user.value) {
-        user.value = { ...user.value, role: data.role };
+        user.value = { ...user.value, role: normalizeAuthRole(data.role) };
         localStorage.setItem("userData", JSON.stringify(user.value));
       }
       return data?.role || user.value?.role || null;

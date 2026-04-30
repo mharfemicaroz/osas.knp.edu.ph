@@ -59,7 +59,13 @@ const routes = [
 
   // Dashboards
   {
-    meta: { title: "Dashboard", requiresAuth: true, roles: ["admin"] },
+    meta: { title: "Service Landing", requiresAuth: true, roles: ["admin", "manager", "superadmin"] },
+    path: "/admin-landing",
+    name: "admin-landing",
+    component: () => import("@/views/AdminLandingPage.vue"),
+  },
+  {
+    meta: { title: "Dashboard", requiresAuth: true, roles: ["admin", "manager", "superadmin"] },
     path: "/dashboard",
     name: "dashboard",
     component: () => import("@/views/IndexDashboardOptimizedPage.vue"),
@@ -76,6 +82,26 @@ const routes = [
   },
 
   // App Pages
+  {
+    meta: {
+      title: "Student Welfare Services",
+      requiresAuth: true,
+      roles: ["admin", "manager", "superadmin"],
+    },
+    path: "/student-welfare-services",
+    name: "student-welfare-services",
+    component: () => import("@/views/StudentWelfareServicesPage.vue"),
+  },
+  {
+    meta: {
+      title: "Student Discipline and Conduct",
+      requiresAuth: true,
+      roles: ["admin", "manager", "superadmin"],
+    },
+    path: "/student-discipline-conduct",
+    name: "student-discipline-conduct",
+    component: () => import("@/views/StudentDisciplineConductPage.vue"),
+  },
   {
     meta: {
       title: "Clubs & Organizations",

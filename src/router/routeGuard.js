@@ -3,6 +3,14 @@ import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 
 const officerTitles = new Set(["president", "vice-president", "secretary"]);
+const privilegedRoles = new Set(["admin", "manager", "superadmin"]);
+
+function defaultRouteNameFor(role) {
+  const normalized = String(role || "").toLowerCase();
+  if (normalized === "student") return "student-dashboard";
+  if (privilegedRoles.has(normalized)) return "admin-landing";
+  return "dashboard";
+}
 
 async function computeEffectiveRole(authStore, to) {
   const base = (authStore.user?.role || "").toLowerCase();
@@ -99,24 +107,24 @@ export const authGuard = async (to, from, next) => {
       "verify-utilization",
     ]);
     if (allowList.has(to.name)) return next();
-    return next({
-      name: baseRole === "student" ? "student-dashboard" : "dashboard",
-    });
+    return next({ name: defaultRouteNameFor(baseRole) });
   }
 
   if (requiresAuth) {
     const allowedRoles = to.meta?.roles;
     if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
       if (!allowedRoles.includes(effectiveRole)) {
-        return next({
-          name: baseRole === "student" ? "student-dashboard" : "dashboard",
-        });
+        return next({ name: defaultRouteNameFor(baseRole) });
       }
     }
   }
 
   if (to.name === "dashboard" && baseRole === "student") {
     return next({ name: "student-dashboard" });
+  }
+
+  if (to.name === "admin-landing" && !privilegedRoles.has(baseRole)) {
+    return next({ name: defaultRouteNameFor(baseRole) });
   }
 
   return next();
