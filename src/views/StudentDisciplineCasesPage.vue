@@ -12,6 +12,10 @@ const store = useDisciplineCaseStore();
 const filters = reactive({ q: "", category: "", current_step: "", priority: "" });
 const attachmentFile = ref(null);
 const showCreateForm = ref(false);
+const showProgressModal = ref(false);
+const showNoteModal = ref(false);
+const showFindingModal = ref(false);
+const showAttachmentModal = ref(false);
 const activeWorkspaceTab = ref("overview");
 
 const caseForm = reactive({
@@ -368,16 +372,32 @@ onMounted(async () => {
                       </div>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div class="font-semibold text-slate-900">Step Control</div>
-                      <div class="mt-3 grid gap-3 md:grid-cols-2">
-                        <select v-model="progressForm.current_step" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="intake">Intake</option><option value="investigation">Investigation</option><option value="findings">Findings</option><option value="sanctioning">Sanctioning</option><option value="notification">Notification</option></select>
-                        <select v-model="progressForm.status" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="intake_review">Intake review</option><option value="under_investigation">Under investigation</option><option value="for_findings">For findings</option><option value="for_sanction">For sanction</option><option value="for_notification">For notification</option><option value="decision_served">Decision served</option><option value="under_appeal">Under appeal</option><option value="closed">Closed</option></select>
+                      <div class="font-semibold text-slate-900">Case Control</div>
+                      <div class="mt-2 text-sm text-slate-500">Use the actions below instead of editing everything inline.</div>
+                      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <button class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800" @click="showProgressModal = true">
+                          Update Progress
+                        </button>
+                        <button class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100" @click="activeWorkspaceTab = 'investigation'">
+                          Open Investigation
+                        </button>
+                        <button class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100" @click="activeWorkspaceTab = 'findings'">
+                          Open Findings
+                        </button>
+                        <button class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100" @click="showAttachmentModal = true">
+                          Upload Evidence
+                        </button>
                       </div>
-                      <textarea v-model="progressForm.finding_summary" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Short findings summary for the case card"></textarea>
-                      <textarea v-model="progressForm.sanction_summary" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Short sanction summary for the case card"></textarea>
-                      <textarea v-model="progressForm.confidential_notes" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Confidential notes visible only to discipline staff"></textarea>
-                      <input v-model="progressForm.appeal_deadline_at" type="date" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm">
-                      <button class="mt-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800" @click="saveProgress">Save Case Progress</button>
+                      <div class="mt-4 grid gap-3 md:grid-cols-2">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Findings Summary</div>
+                          <div class="mt-2 text-sm text-slate-600">{{ selected.finding_summary || "No summary yet." }}</div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Sanction Summary</div>
+                          <div class="mt-2 text-sm text-slate-600">{{ selected.sanction_summary || "No summary yet." }}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -422,8 +442,8 @@ onMounted(async () => {
                 <div v-if="activeWorkspaceTab === 'investigation'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
                   <h2 class="text-lg font-bold text-slate-900">Attachments and Evidence</h2>
                   <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <input type="file" class="w-full text-sm" @change="attachmentFile = $event.target.files?.[0] || null">
-                    <button class="mt-3 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60" :disabled="!attachmentFile" @click="submitAttachment">Upload Attachment</button>
+                    <div class="text-sm text-slate-500">Keep the evidence list visible here, but use the modal to upload files one at a time.</div>
+                    <button class="mt-3 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary/90" @click="showAttachmentModal = true">Upload Attachment</button>
                   </div>
                   <div class="mt-4 space-y-3">
                     <div v-for="attachment in selected.attachments || []" :key="attachment.id" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -437,19 +457,9 @@ onMounted(async () => {
                 </div>
 
                 <div v-if="activeWorkspaceTab === 'investigation'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 class="text-lg font-bold text-slate-900">Add Investigation Note</h2>
-                  <div class="mt-4 grid gap-3">
-                    <div class="grid gap-3 md:grid-cols-2">
-                      <select v-model="noteForm.note_type" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="interview">Interview</option><option value="evidence">Evidence</option><option value="observation">Observation</option><option value="notice">Notice</option><option value="conference">Conference</option></select>
-                      <input v-model="noteForm.occurred_at" type="datetime-local" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
-                    </div>
-                    <input v-model="noteForm.title" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Note title">
-                    <div class="grid gap-3 md:grid-cols-2">
-                      <input v-model="noteForm.interviewee_name" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Interviewee">
-                      <input v-model="noteForm.interviewee_role" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Role">
-                    </div>
-                    <textarea v-model="noteForm.content" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Interview or evidence note"></textarea>
-                    <button class="rounded-2xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500" @click="submitNote">Save Investigation Note</button>
+                  <div class="flex items-center justify-between gap-4">
+                    <h2 class="text-lg font-bold text-slate-900">Investigation Notes</h2>
+                    <button class="rounded-2xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500" @click="showNoteModal = true">Add Note</button>
                   </div>
 
                   <div class="mt-5 space-y-3">
@@ -460,22 +470,14 @@ onMounted(async () => {
                       </div>
                       <div class="mt-2 text-sm text-slate-700">{{ note.content }}</div>
                     </div>
+                    <div v-if="!(selected.investigation_notes || []).length" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">No investigation notes yet.</div>
                   </div>
                 </div>
 
                 <div v-if="activeWorkspaceTab === 'findings'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 class="text-lg font-bold text-slate-900">Add Finding of Facts</h2>
-                  <div class="mt-4 grid gap-3">
-                    <div class="grid gap-3 md:grid-cols-2">
-                      <select v-model="findingForm.determination" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="pending">Pending</option><option value="substantiated">Substantiated</option><option value="partially_substantiated">Partially substantiated</option><option value="not_substantiated">Not substantiated</option></select>
-                      <input v-model="findingForm.issued_at" type="datetime-local" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
-                    </div>
-                    <textarea v-model="findingForm.finding_text" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Written finding of facts"></textarea>
-                    <textarea v-model="findingForm.basis_summary" rows="3" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Basis summary"></textarea>
-                    <input v-model="findingForm.standard_used" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Standard used">
-                    <textarea v-model="findingForm.recommended_action" rows="3" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Recommended action"></textarea>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-600"><input v-model="findingForm.is_final" type="checkbox"><span>Mark as final finding</span></label>
-                    <button class="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500" @click="submitFinding">Save Finding</button>
+                  <div class="flex items-center justify-between gap-4">
+                    <h2 class="text-lg font-bold text-slate-900">Findings of Facts</h2>
+                    <button class="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500" @click="showFindingModal = true">Add Finding</button>
                   </div>
 
                   <div class="mt-5 space-y-3">
@@ -487,6 +489,7 @@ onMounted(async () => {
                       <div class="mt-2 text-sm text-slate-700">{{ finding.finding_text }}</div>
                       <div v-if="finding.recommended_action" class="mt-2 text-sm text-slate-500">Recommended action: {{ finding.recommended_action }}</div>
                     </div>
+                    <div v-if="!(selected.findings || []).length" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">No findings recorded yet.</div>
                   </div>
                 </div>
               </div>
@@ -495,5 +498,135 @@ onMounted(async () => {
         </div>
       </section>
     </SectionMain>
+
+    <div v-if="showProgressModal && selected" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+      <div class="w-full max-w-3xl rounded-[1.75rem] bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">Update Case Progress</h3>
+            <p class="mt-1 text-sm text-slate-500">{{ selected.reference_code }} | {{ selected.student_name }}</p>
+          </div>
+          <button class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700" @click="showProgressModal = false">Close</button>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <select v-model="progressForm.current_step" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+            <option value="intake">Intake</option>
+            <option value="investigation">Investigation</option>
+            <option value="findings">Findings</option>
+            <option value="sanctioning">Sanctioning</option>
+            <option value="notification">Notification</option>
+          </select>
+          <select v-model="progressForm.status" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+            <option value="intake_review">Intake review</option>
+            <option value="under_investigation">Under investigation</option>
+            <option value="for_findings">For findings</option>
+            <option value="for_sanction">For sanction</option>
+            <option value="for_notification">For notification</option>
+            <option value="decision_served">Decision served</option>
+            <option value="under_appeal">Under appeal</option>
+            <option value="closed">Closed</option>
+          </select>
+          <textarea v-model="progressForm.finding_summary" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Short findings summary for list and dashboard cards"></textarea>
+          <textarea v-model="progressForm.sanction_summary" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Short sanction summary for list and dashboard cards"></textarea>
+          <input v-model="progressForm.appeal_deadline_at" type="date" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2">
+          <textarea v-model="progressForm.confidential_notes" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Confidential staff notes"></textarea>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" @click="showProgressModal = false">Cancel</button>
+          <button class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white" @click="saveProgress">Save Progress</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showNoteModal && selected" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+      <div class="w-full max-w-3xl rounded-[1.75rem] bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">Add Investigation Note</h3>
+            <p class="mt-1 text-sm text-slate-500">Use one note for one interview, one evidence review, or one meeting.</p>
+          </div>
+          <button class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700" @click="showNoteModal = false">Close</button>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <select v-model="noteForm.note_type" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+            <option value="interview">Interview</option>
+            <option value="evidence">Evidence review</option>
+            <option value="observation">Observation</option>
+            <option value="notice">Notice served</option>
+            <option value="conference">Conference</option>
+          </select>
+          <input v-model="noteForm.occurred_at" type="datetime-local" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+          <input v-model="noteForm.title" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Short note title">
+          <input v-model="noteForm.interviewee_name" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Interviewee or participant name">
+          <input v-model="noteForm.interviewee_role" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Role or relation to case">
+          <textarea v-model="noteForm.content" rows="5" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="What happened, what was said, and what was collected"></textarea>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" @click="showNoteModal = false">Cancel</button>
+          <button class="rounded-2xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white" @click="submitNote">Save Note</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showFindingModal && selected" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+      <div class="w-full max-w-3xl rounded-[1.75rem] bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">Add Finding of Facts</h3>
+            <p class="mt-1 text-sm text-slate-500">Record the determination after reviewing statements and evidence.</p>
+          </div>
+          <button class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700" @click="showFindingModal = false">Close</button>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <select v-model="findingForm.determination" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+            <option value="pending">Pending</option>
+            <option value="substantiated">Substantiated</option>
+            <option value="partially_substantiated">Partially substantiated</option>
+            <option value="not_substantiated">Not substantiated</option>
+          </select>
+          <input v-model="findingForm.issued_at" type="datetime-local" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+          <textarea v-model="findingForm.finding_text" rows="5" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Written finding of facts"></textarea>
+          <textarea v-model="findingForm.basis_summary" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Basis summary: evidence, statements, and observations considered"></textarea>
+          <input v-model="findingForm.standard_used" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Standard used">
+          <textarea v-model="findingForm.recommended_action" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2" placeholder="Recommended sanction or next action"></textarea>
+          <label class="inline-flex items-center gap-2 text-sm text-slate-600 md:col-span-2">
+            <input v-model="findingForm.is_final" type="checkbox">
+            <span>Mark this as the final finding for the case</span>
+          </label>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" @click="showFindingModal = false">Cancel</button>
+          <button class="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white" @click="submitFinding">Save Finding</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showAttachmentModal && selected" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+      <div class="w-full max-w-2xl rounded-[1.75rem] bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">Upload Evidence</h3>
+            <p class="mt-1 text-sm text-slate-500">Attach screenshots, written statements, letters, or supporting files for this case.</p>
+          </div>
+          <button class="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700" @click="showAttachmentModal = false">Close</button>
+        </div>
+
+        <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <input type="file" class="w-full text-sm" @change="attachmentFile = $event.target.files?.[0] || null">
+          <p class="mt-3 text-sm text-slate-500">Choose one file to attach. You can repeat this for additional evidence.</p>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" @click="showAttachmentModal = false">Cancel</button>
+          <button class="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" :disabled="!attachmentFile" @click="submitAttachment">Upload File</button>
+        </div>
+      </div>
+    </div>
   </LayoutAuthenticated>
 </template>
