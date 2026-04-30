@@ -1,15 +1,29 @@
 <!-- src/components/layout/AppHeader.vue -->
 <template>
   <div class="flex justify-between items-center px-4 sm:px-6 py-3 bg-primary text-white">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 min-w-0">
       <button v-if="showMenuToggle" class="md:hidden focus:outline-none" @click="$emit('toggle')">
         <i class="mdi mdi-menu text-white text-2xl"></i>
       </button>
-      <div class="logo-box flex items-center">
+      <div class="logo-box flex items-center shrink-0">
         <a href="javascript:void(0)" class="flex items-center">
           <img src="/images/logo-banner.png" alt="Logo" class="hidden md:block" width="158" height="45" />
           <img src="/images/logo-sm.png" alt="Logo" class="block md:hidden" width="36" height="36" />
         </a>
+      </div>
+      <button v-if="showModuleState" class="sm:hidden inline-flex items-center gap-1 rounded-full border border-white/20 px-2.5 py-1 text-[11px] font-semibold text-white/90 transition hover:bg-white/10" @click="goToLanding">
+        <span class="truncate max-w-[120px]">{{ moduleTitle }}</span>
+        <i class="mdi mdi-swap-horizontal text-sm"></i>
+      </button>
+      <div v-if="showModuleState" class="hidden lg:flex items-center gap-2 min-w-0 border-l border-white/20 pl-3">
+        <div class="min-w-0">
+          <div class="text-[10px] uppercase tracking-[0.22em] text-white/70">Current Module</div>
+          <div class="truncate text-sm font-semibold">{{ moduleTitle }}</div>
+        </div>
+        <button class="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-white/90 transition hover:bg-white/10" @click="goToLanding">
+          <i class="mdi mdi-arrow-u-left-top text-sm"></i>
+          <span>Change</span>
+        </button>
       </div>
     </div>
 
@@ -287,10 +301,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
 import { useAppContextStore } from '@/stores/appContext'
+import { useServiceModuleStore } from '@/stores/serviceModule'
 import ClubsListModal from '@/components/clubs/ClubsListModal.vue'
 import NotificationsListModal from '@/components/notifications/NotificationsListModal.vue'
 import { useNotificationStore } from '@/stores/notification'
@@ -319,9 +334,11 @@ function initials(name) {
 }
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const userStore = useUserStore()
 const appCtx = useAppContextStore()
+const serviceModuleStore = useServiceModuleStore()
 const notifStore = useNotificationStore()
 const msgsStore = useRemarksInboxStore()
 
@@ -346,6 +363,15 @@ const hasMore = computed(() => (clubs.value?.length || 0) > 2)
 
 const headerName = computed(() => appCtx.isClub ? (appCtx.headerName || props.fullname) : props.fullname)
 const headerAvatar = computed(() => appCtx.isClub ? (appCtx.headerAvatar || '') : (props.avatar || ''))
+const showModuleState = computed(() => route.name !== 'admin-landing' && !!serviceModuleStore.selectedKey)
+const moduleTitle = computed(() => serviceModuleStore.selectedShortTitle || serviceModuleStore.selectedTitle || '')
+
+const goToLanding = () => {
+  isOpen.value = false
+  notifOpen.value = false
+  msgsOpen.value = false
+  router.push({ name: 'admin-landing' })
+}
 
 const loadClubs = async () => {
   const uid = auth.user?.id

@@ -78,6 +78,7 @@ export const useAuthStore = defineStore("auth", () => {
         localStorage.setItem("userData", JSON.stringify(user.value));
         // Clear any previous club context on new account
         try { localStorage.removeItem('appContext'); } catch {}
+        try { localStorage.removeItem('selectedServiceModule'); } catch {}
         try { const mod = await import('@/stores/appContext'); mod.useAppContextStore().setUserContext() } catch {}
 
         router.push(getPostLoginRoute(user.value?.role));
@@ -135,6 +136,7 @@ export const useAuthStore = defineStore("auth", () => {
 
       // Reset any persisted club context on login (back to profile)
       try { localStorage.removeItem('appContext'); } catch {}
+      try { localStorage.removeItem('selectedServiceModule'); } catch {}
       try {
         const mod = await import('@/stores/appContext')
         mod.useAppContextStore().setUserContext()
@@ -175,6 +177,7 @@ export const useAuthStore = defineStore("auth", () => {
 
       // Reset any persisted club context on 2FA verify (back to profile)
       try { localStorage.removeItem('appContext'); } catch {}
+      try { localStorage.removeItem('selectedServiceModule'); } catch {}
       try {
         const mod = await import('@/stores/appContext')
         mod.useAppContextStore().setUserContext()
@@ -243,6 +246,7 @@ export const useAuthStore = defineStore("auth", () => {
     localStorage.removeItem("requires2FA");
     localStorage.removeItem("tempToken");
     try { localStorage.removeItem('appContext'); } catch {}
+    try { localStorage.removeItem('selectedServiceModule'); } catch {}
 
     try { import('@/stores/appContext').then(mod => { try { mod.useAppContextStore().setUserContext() } catch {} }).catch(() => {}) } catch {}
 
@@ -343,6 +347,7 @@ export const useAuthStore = defineStore("auth", () => {
 
     // Clear any previous club context after SSO
     try { localStorage.removeItem('appContext'); } catch {}
+    try { localStorage.removeItem('selectedServiceModule'); } catch {}
     try { import('@/stores/appContext').then(mod => { try { mod.useAppContextStore().setUserContext() } catch {} }).catch(() => {}) } catch {}
     router.push(getPostLoginRoute(user.value?.role));
     return true;

@@ -28,8 +28,10 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
+import { useServiceModuleStore } from "@/stores/serviceModule";
 
 import AppHeader from "@/components/layout/AppHeader.vue";
 import AppMobileNav from "@/components/layout/AppMobileNav.vue";
@@ -39,6 +41,8 @@ import ToasterComponent from "@/components/ToasterComponent.vue";
 
 const authStore = useAuthStore();
 const userStore = useUserStore();
+const serviceModuleStore = useServiceModuleStore();
+const route = useRoute();
 
 const loading = ref(false);
 const showSidebar = ref(true);
@@ -84,11 +88,20 @@ const toggleSidebar = () => { showSidebar.value = !showSidebar.value; };
 
 onMounted(() => {
     window.toastRef = toast.value;
+    serviceModuleStore.syncFromRoute(route, authStore.user?.role);
     const uid = authStore.user?.id;
     if (uid && !normalizeAvatar(authStore.user)) {
         userStore.fetchById(uid).catch(() => null);
     }
 });
+
+watch(
+  () => [route.fullPath, authStore.user?.role],
+  () => {
+    serviceModuleStore.syncFromRoute(route, authStore.user?.role);
+  },
+  { immediate: true }
+);
 
 // Keep authStore.user enriched with avatar/cover when we fetch self into userStore
 watch(

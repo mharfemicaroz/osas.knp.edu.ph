@@ -11,6 +11,8 @@ import { useDisciplineCaseStore } from "@/stores/disciplineCase";
 const store = useDisciplineCaseStore();
 const filters = reactive({ q: "", category: "", current_step: "", priority: "" });
 const attachmentFile = ref(null);
+const showCreateForm = ref(false);
+const activeWorkspaceTab = ref("overview");
 
 const caseForm = reactive({
   student_name: "",
@@ -63,6 +65,13 @@ const findingForm = reactive({
 
 const rows = computed(() => store.items?.data || []);
 const selected = computed(() => store.selected);
+const selectedStepMeta = computed(() => getStepMeta(selected.value?.current_step || "intake"));
+const queueSummary = computed(() => ({
+  total: rows.value.length,
+  intake: rows.value.filter((item) => item.current_step === "intake").length,
+  investigation: rows.value.filter((item) => item.current_step === "investigation").length,
+  decision: rows.value.filter((item) => ["findings", "sanctioning", "notification"].includes(item.current_step)).length,
+}));
 
 function categoryTone(category) {
   if (category === "A") return "emerald";
@@ -112,7 +121,10 @@ function syncProgressForm(row) {
   progressForm.appeal_deadline_at = row.appeal_deadline_at ? String(row.appeal_deadline_at).slice(0, 10) : "";
 }
 
-watch(() => selected.value, (row) => syncProgressForm(row), { immediate: true });
+watch(() => selected.value, (row) => {
+  syncProgressForm(row);
+  if (row && !showCreateForm.value) activeWorkspaceTab.value = "overview";
+}, { immediate: true });
 
 async function submitCase() {
   const payload = {
@@ -131,6 +143,8 @@ async function submitCase() {
   });
   await fetchCases(true);
   if (created?.id) await selectCase(created.id);
+  showCreateForm.value = false;
+  activeWorkspaceTab.value = "overview";
 }
 
 async function saveProgress() {
@@ -173,6 +187,7 @@ async function removeAttachment(attachmentId) {
 
 onMounted(async () => {
   await fetchCases(true);
+  showCreateForm.value = !rows.value.length;
 });
 </script>
 
@@ -194,11 +209,43 @@ onMounted(async () => {
         <NotificationBar v-if="store.error" color="danger">{{ store.error }}</NotificationBar>
         <DisciplineModuleNav />
 
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-4">
+          <div class="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Open Queue</div>
+            <div class="mt-2 text-3xl font-black text-slate-900">{{ queueSummary.total }}</div>
+            <div class="mt-2 text-sm text-slate-500">Cases currently loaded into the workflow board.</div>
+          </div>
+          <div class="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Intake Review</div>
+            <div class="mt-2 text-3xl font-black text-slate-900">{{ queueSummary.intake }}</div>
+            <div class="mt-2 text-sm text-slate-500">New reports still being checked for completeness.</div>
+          </div>
+          <div class="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Investigation</div>
+            <div class="mt-2 text-3xl font-black text-slate-900">{{ queueSummary.investigation }}</div>
+            <div class="mt-2 text-sm text-slate-500">Cases requiring interviews, evidence gathering, or notices.</div>
+          </div>
+          <div class="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Decision Stage</div>
+            <div class="mt-2 text-3xl font-black text-slate-900">{{ queueSummary.decision }}</div>
+            <div class="mt-2 text-sm text-slate-500">Cases in findings, sanctioning, or final notification.</div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
           <div class="xl:col-span-4 space-y-6">
             <div class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-lg font-bold text-slate-900">Create Intake Case</h2>
-              <div class="mt-5 grid gap-3">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h2 class="text-lg font-bold text-slate-900">Step 1: Intake Report</h2>
+                  <p class="mt-1 text-sm text-slate-500">Start a new case only when a written incident report is ready.</p>
+                </div>
+                <button class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 transition hover:bg-slate-50" @click="showCreateForm = !showCreateForm">
+                  {{ showCreateForm ? "Hide Form" : "New Intake" }}
+                </button>
+              </div>
+
+              <div v-if="showCreateForm" class="mt-5 grid gap-3">
                 <input v-model="caseForm.student_name" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Student full name">
                 <div class="grid gap-3 md:grid-cols-2">
                   <input v-model="caseForm.student_school_id" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="School ID">
@@ -226,6 +273,9 @@ onMounted(async () => {
                 <textarea v-model="caseForm.evidence_summary_text" rows="3" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Evidence summary, one item per line"></textarea>
                 <textarea v-model="caseForm.confidential_notes" rows="3" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Confidential intake notes"></textarea>
                 <button class="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60" :disabled="store.isLoading" @click="submitCase">Create Case</button>
+              </div>
+              <div v-else class="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                Use <span class="font-semibold text-slate-700">New Intake</span> when you need to log a fresh disciplinary report.
               </div>
             </div>
 
@@ -281,6 +331,7 @@ onMounted(async () => {
                   <div>
                     <h2 class="text-lg font-bold text-slate-900">{{ selected.reference_code }}</h2>
                     <p class="text-sm text-slate-500">{{ selected.student_name }} | {{ selected.student_school_id || "No ID" }}</p>
+                    <p class="mt-2 text-sm font-medium text-primary">{{ selectedStepMeta.step }} - {{ selectedStepMeta.title }}</p>
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <Badge :text="`Category ${selected.category}`" :tone="categoryTone(selected.category)" />
@@ -289,37 +340,86 @@ onMounted(async () => {
                 </div>
 
                 <div class="mt-5 grid gap-3 text-sm text-slate-700">
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-semibold text-slate-900">Incident Summary</div>
-                    <div class="mt-2">{{ selected.offense_title }}</div>
-                    <div class="mt-1 text-slate-500">{{ selected.offense_description }}</div>
+                  <div class="grid gap-3 sm:grid-cols-3">
+                    <button class="rounded-2xl border px-4 py-3 text-sm font-semibold transition" :class="activeWorkspaceTab === 'overview' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 bg-slate-50 text-slate-700'" @click="activeWorkspaceTab = 'overview'">
+                      Overview
+                    </button>
+                    <button class="rounded-2xl border px-4 py-3 text-sm font-semibold transition" :class="activeWorkspaceTab === 'investigation' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 bg-slate-50 text-slate-700'" @click="activeWorkspaceTab = 'investigation'">
+                      Investigation
+                    </button>
+                    <button class="rounded-2xl border px-4 py-3 text-sm font-semibold transition" :class="activeWorkspaceTab === 'findings' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 bg-slate-50 text-slate-700'" @click="activeWorkspaceTab = 'findings'">
+                      Findings
+                    </button>
                   </div>
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-semibold text-slate-900">Reporter and Witnesses</div>
-                    <div class="mt-2">Reporter: {{ selected.reporter_name }} ({{ selected.reporter_type || "unspecified" }})</div>
-                    <div class="mt-1">Contact: {{ selected.reporter_contact || "Not provided" }}</div>
-                    <div class="mt-3 text-slate-500">
-                      <div v-if="selected.witness_information?.length"><div v-for="entry in selected.witness_information" :key="entry">{{ entry }}</div></div>
-                      <div v-else>No witnesses encoded.</div>
+
+                  <div v-if="activeWorkspaceTab === 'overview'" class="space-y-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="font-semibold text-slate-900">Incident Summary</div>
+                      <div class="mt-2">{{ selected.offense_title }}</div>
+                      <div class="mt-1 text-slate-500">{{ selected.offense_description }}</div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="font-semibold text-slate-900">Reporter and Witnesses</div>
+                      <div class="mt-2">Reporter: {{ selected.reporter_name }} ({{ selected.reporter_type || "unspecified" }})</div>
+                      <div class="mt-1">Contact: {{ selected.reporter_contact || "Not provided" }}</div>
+                      <div class="mt-3 text-slate-500">
+                        <div v-if="selected.witness_information?.length"><div v-for="entry in selected.witness_information" :key="entry">{{ entry }}</div></div>
+                        <div v-else>No witnesses encoded.</div>
+                      </div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="font-semibold text-slate-900">Step Control</div>
+                      <div class="mt-3 grid gap-3 md:grid-cols-2">
+                        <select v-model="progressForm.current_step" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="intake">Intake</option><option value="investigation">Investigation</option><option value="findings">Findings</option><option value="sanctioning">Sanctioning</option><option value="notification">Notification</option></select>
+                        <select v-model="progressForm.status" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="intake_review">Intake review</option><option value="under_investigation">Under investigation</option><option value="for_findings">For findings</option><option value="for_sanction">For sanction</option><option value="for_notification">For notification</option><option value="decision_served">Decision served</option><option value="under_appeal">Under appeal</option><option value="closed">Closed</option></select>
+                      </div>
+                      <textarea v-model="progressForm.finding_summary" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Short findings summary for the case card"></textarea>
+                      <textarea v-model="progressForm.sanction_summary" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Short sanction summary for the case card"></textarea>
+                      <textarea v-model="progressForm.confidential_notes" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Confidential notes visible only to discipline staff"></textarea>
+                      <input v-model="progressForm.appeal_deadline_at" type="date" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+                      <button class="mt-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800" @click="saveProgress">Save Case Progress</button>
                     </div>
                   </div>
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div class="font-semibold text-slate-900">Step Control</div>
-                    <div class="mt-3 grid gap-3 md:grid-cols-2">
-                      <select v-model="progressForm.current_step" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="intake">Intake</option><option value="investigation">Investigation</option><option value="findings">Findings</option><option value="sanctioning">Sanctioning</option><option value="notification">Notification</option></select>
-                      <select v-model="progressForm.status" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm"><option value="intake_review">Intake review</option><option value="under_investigation">Under investigation</option><option value="for_findings">For findings</option><option value="for_sanction">For sanction</option><option value="for_notification">For notification</option><option value="decision_served">Decision served</option><option value="under_appeal">Under appeal</option><option value="closed">Closed</option></select>
+
+                  <div v-else-if="activeWorkspaceTab === 'investigation'" class="space-y-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="font-semibold text-slate-900">Evidence and Attachments</div>
+                      <div class="mt-2 text-slate-500">Upload screenshots, written statements, or supporting files tied to this case.</div>
                     </div>
-                    <textarea v-model="progressForm.finding_summary" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Finding summary"></textarea>
-                    <textarea v-model="progressForm.sanction_summary" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Sanction summary"></textarea>
-                    <textarea v-model="progressForm.confidential_notes" rows="3" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Confidential notes"></textarea>
-                    <input v-model="progressForm.appeal_deadline_at" type="date" class="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm">
-                    <button class="mt-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800" @click="saveProgress">Save Case Progress</button>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="font-semibold text-slate-900">Investigation Note Form</div>
+                      <div class="mt-2 text-slate-500">Use one note per interview, evidence review, or conference entry.</div>
+                    </div>
+                  </div>
+
+                  <div v-else class="space-y-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="font-semibold text-slate-900">Finding of Facts</div>
+                      <div class="mt-2 text-slate-500">Record the factual determination and recommended action once the investigation is complete.</div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div class="xl:col-span-6 space-y-6">
-                <div class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div v-if="activeWorkspaceTab === 'overview'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <h2 class="text-lg font-bold text-slate-900">Recommended Next Action</h2>
+                  <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div class="text-xs uppercase tracking-[0.18em] text-primary">{{ selectedStepMeta.step }}</div>
+                    <div class="mt-2 text-base font-bold text-slate-900">{{ selectedStepMeta.title }}</div>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">{{ selectedStepMeta.summary }}</p>
+                  </div>
+                  <div class="mt-4 grid gap-3">
+                    <button class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm transition hover:bg-slate-100" @click="activeWorkspaceTab = 'investigation'">
+                      Continue to investigation workspace
+                    </button>
+                    <button class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm transition hover:bg-slate-100" @click="activeWorkspaceTab = 'findings'">
+                      Continue to findings workspace
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="activeWorkspaceTab === 'investigation'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
                   <h2 class="text-lg font-bold text-slate-900">Attachments and Evidence</h2>
                   <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <input type="file" class="w-full text-sm" @change="attachmentFile = $event.target.files?.[0] || null">
@@ -336,7 +436,7 @@ onMounted(async () => {
                   </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div v-if="activeWorkspaceTab === 'investigation'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
                   <h2 class="text-lg font-bold text-slate-900">Add Investigation Note</h2>
                   <div class="mt-4 grid gap-3">
                     <div class="grid gap-3 md:grid-cols-2">
@@ -363,7 +463,7 @@ onMounted(async () => {
                   </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div v-if="activeWorkspaceTab === 'findings'" class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
                   <h2 class="text-lg font-bold text-slate-900">Add Finding of Facts</h2>
                   <div class="mt-4 grid gap-3">
                     <div class="grid gap-3 md:grid-cols-2">

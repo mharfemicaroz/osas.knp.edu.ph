@@ -3,9 +3,11 @@ import { computed } from "vue";
 import { useRouter } from "vue-router";
 import LayoutLanding from "@/layouts/LayoutLanding.vue";
 import { useAuthStore } from "@/stores/auth";
+import { useServiceModuleStore } from "@/stores/serviceModule";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const serviceModuleStore = useServiceModuleStore();
 
 const fullName = computed(() => {
   const firstName = authStore.user?.first_name || "";
@@ -42,17 +44,18 @@ const menuCards = [
     key: "discipline",
     title: "Student Discipline and Conduct",
     shortTitle: "Student Discipline and Conduct",
-    subtitle: "Reserved route for discipline, case handling, and conduct-related processes. This section is ready for future development.",
+    subtitle: "Discipline intake, investigation, findings, sanctioning, appeals, and confidential records in one dedicated casework module.",
     icon: "mdi-scale-balance",
     accent: "from-amber-600 via-orange-600 to-rose-600",
     ring: "ring-amber-500/20",
     iconWrap: "bg-amber-100 text-amber-700",
-    actionLabel: "Open Placeholder",
+    actionLabel: "Open Discipline Module",
     route: { name: "student-discipline-conduct" },
   },
 ];
 
 function openCard(card) {
+  serviceModuleStore.setSelectedModule(card.key);
   router.push(card.route);
 }
 </script>

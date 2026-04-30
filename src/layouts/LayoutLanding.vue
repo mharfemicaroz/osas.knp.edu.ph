@@ -24,8 +24,10 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
+import { useServiceModuleStore } from "@/stores/serviceModule";
 
 import AppHeader from "@/components/layout/AppHeader.vue";
 import AppFooter from "@/components/layout/AppFooter.vue";
@@ -33,6 +35,8 @@ import ToasterComponent from "@/components/ToasterComponent.vue";
 
 const authStore = useAuthStore();
 const userStore = useUserStore();
+const serviceModuleStore = useServiceModuleStore();
+const route = useRoute();
 
 const loading = ref(false);
 const toast = ref(null);
@@ -70,11 +74,20 @@ async function handleLogout() {
 
 onMounted(() => {
   window.toastRef = toast.value;
+  serviceModuleStore.syncFromRoute(route, authStore.user?.role);
   const uid = authStore.user?.id;
   if (uid && !normalizeAvatar(authStore.user)) {
     userStore.fetchById(uid).catch(() => null);
   }
 });
+
+watch(
+  () => [route.fullPath, authStore.user?.role],
+  () => {
+    serviceModuleStore.syncFromRoute(route, authStore.user?.role);
+  },
+  { immediate: true }
+);
 
 watch(
   () => userStore.selectedUser,
